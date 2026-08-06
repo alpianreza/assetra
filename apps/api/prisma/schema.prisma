@@ -146,11 +146,11 @@ model ComplianceInventory {
   categoryId      Int
   areaId          Int?
   itemTypeId      Int?
+  // Auto-generated as KODEKATEGORI-KODEITEM-001, never entered by hand.
   assetCode       String   @unique @db.VarChar(100)
   typeDescription String?  @db.VarChar(255)
   specificArea    String?  @db.VarChar(255)
   status          String?  @db.VarChar(50)
-  qty             Int?     @default(1)
   remark          String?  @db.Text
   qrImage         String?  @db.VarChar(255)
   photo           String?  @db.VarChar(255)
@@ -209,6 +209,7 @@ model ChecklistQuestion {
   placeholder  String?  @db.VarChar(255)
   helpText     String?  @db.Text
   isRequired   Boolean  @default(true)
+  requirePhoto Boolean  @default(false) @map("require_photo")
   active       Boolean  @default(true)
   sortOrder    Int      @default(0)
   createdAt    DateTime @default(now()) @db.DateTime(0)
@@ -276,7 +277,7 @@ model ChecklistLog {
   questionId  Int?
   sessionId   Int?
   checkDate   DateTime           @db.Date()
-  periodKey   String             @db.VarChar(30) // YYYY-MM-DD | YYYY-MM-W1 etc
+  periodKey   String             @db.VarChar(30) // YYYY-MM-DD | YYYY-MM-W1 | YYYY-MM
   periodLabel String?            @db.VarChar(100)
   status      ChecklistLogStatus
   remark      String?            @db.Text
@@ -291,6 +292,7 @@ model ChecklistLog {
   evidence  Evidence[]
   inspector User                @relation("InspectorLogs", fields: [checkedById], references: [id])
 
+  @@index([inventoryId, periodKey])
   @@map("checklist_logs")
 }
 

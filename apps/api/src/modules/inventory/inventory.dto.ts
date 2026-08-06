@@ -1,15 +1,14 @@
-import { IsString, IsNotEmpty, IsInt, IsOptional, IsArray, IsIn, MaxLength } from 'class-validator';
+import { IsString, IsInt, IsOptional, IsArray, IsIn, MaxLength } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export const INVENTORY_STATUSES = ['active', 'inactive', 'maintenance', 'disposed'] as const;
 export type InventoryStatus = typeof INVENTORY_STATUSES[number];
 
+/**
+ * `assetCode` is intentionally absent: the nomor inventaris is always generated
+ * server-side as KODEKATEGORI-KODEITEM-NOURUT and is read-only in the UI.
+ */
 export class CreateInventoryDto {
-  @IsString()
-  @IsNotEmpty()
-  @MaxLength(100)
-  assetCode!: string;
-
   @IsInt()
   itemTypeId!: number;
 
@@ -41,18 +40,9 @@ export class CreateInventoryDto {
 }
 
 export class UpdateInventoryDto {
-  @IsString()
-  @IsOptional()
-  @MaxLength(100)
-  assetCode?: string;
-
   @IsInt()
   @IsOptional()
   itemTypeId?: number;
-
-  @IsInt()
-  @IsOptional()
-  categoryId?: number;
 
   @IsInt()
   @IsOptional()
@@ -85,6 +75,12 @@ export class UpdateInventoryDto {
 export class UpdateInventoryStatusDto {
     @IsIn(INVENTORY_STATUSES)
     status!: InventoryStatus;
+}
+
+export class PreviewAssetCodeDto {
+  @Type(() => Number)
+  @IsInt()
+  itemTypeId!: number;
 }
 
 export class QueryInventoryDto {
