@@ -221,7 +221,7 @@ export function ComplianceExecutionPage() {
 
           {sessions.length > 0 && <div><p className="text-xs text-muted-foreground mb-2">Pilih Sesi</p><div className="flex flex-wrap gap-2">{sessions.map(session => <button key={session.sessionId} onClick={() => selectSession(session.sessionId)} className={`px-3 py-1.5 rounded-lg border text-sm ${effectiveSessionId === session.sessionId ? 'bg-primary text-primary-foreground border-primary' : 'bg-card'}`}>{session.sessionName}</button>)}</div></div>}
 
-          {periodsQuery.isLoading ? <p className="py-6 text-center text-muted-foreground">Memuat kalender...</p> : calendarPeriods.length === 0 ? <p className="py-6 text-center text-muted-foreground">Tidak ada periode untuk bulan ini.</p> : <div className={`grid gap-2 ${frequency === 'daily' ? 'grid-cols-3 sm:grid-cols-5 lg:grid-cols-7' : frequency === 'weekly' ? 'grid-cols-2 md:grid-cols-4' : 'grid-cols-2 md:grid-cols-4'}`}>{calendarPeriods.map((period: any) => <button key={period.periodKey} type="button" disabled={!period.editable || !['pending', 'late'].includes(period.status)} onClick={() => selectPeriod(period)} className={`min-h-12 rounded-lg border px-2 py-2 text-xs font-medium flex items-center justify-center gap-1 transition ${periodClass(period, period.periodKey === activePeriodKey)}`} title={STATUS_LABELS[period.status] ?? period.status}>{periodIcon(period)}<span>{periodButtonLabel(period, frequency)}</span></button>)}</div>}
+          {periodsQuery.isLoading ? <p className="py-6 text-center text-muted-foreground">Memuat kalender...</p> : calendarPeriods.length === 0 ? <p className="py-6 text-center text-muted-foreground">Tidak ada periode untuk bulan ini.</p> : <div className={`grid ${frequency === 'daily' ? 'grid-cols-7 gap-1 sm:gap-2' : 'grid-cols-2 md:grid-cols-4 gap-2'}`}>{calendarPeriods.map((period: any) => <button key={period.periodKey} type="button" disabled={!period.editable || !['pending', 'late'].includes(period.status)} onClick={() => selectPeriod(period)} className={`min-h-12 rounded-lg border px-0.5 sm:px-2 py-2 text-[10px] sm:text-xs font-medium flex flex-col sm:flex-row items-center justify-center gap-0.5 sm:gap-1 transition ${periodClass(period, period.periodKey === activePeriodKey)}`} title={STATUS_LABELS[period.status] ?? period.status}>{periodIcon(period)}<span>{periodButtonLabel(period, frequency)}</span></button>)}</div>}
 
           <div className="flex flex-wrap gap-2 text-xs"><span className="px-2 py-1 rounded bg-emerald-100 text-emerald-800">Selesai: {summary.done ?? 0}</span><span className="px-2 py-1 rounded bg-red-100 text-red-800">Terlambat: {summary.late ?? 0}</span><span className="px-2 py-1 rounded bg-amber-100 text-amber-800">Pending: {summary.pending ?? 0}</span>{frequency === 'daily' && <span className="px-2 py-1 rounded border border-red-200 text-red-700">Libur: {summary.offday ?? 0}</span>}</div>
         </div>
@@ -264,7 +264,7 @@ function periodIcon(period: any) {
 
 function periodButtonLabel(period: any, frequency: string): string {
   if (period.status === 'offday') return 'Libur';
-  if (frequency === 'daily') return new Date(`${period.periodKey}T00:00:00`).toLocaleDateString('id-ID', { day: '2-digit', month: 'short' });
+  if (frequency === 'daily') return String(new Date(`${period.periodKey}T00:00:00`).getDate()).padStart(2, '0');
   return period.periodLabel;
 }
 
