@@ -1,0 +1,413 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================
+// ASSETRA CORE DATABASE SCHEMA (Prompt 03B)
+// ============================================================
+
+// --- Organization ---
+model Organization {
+  id            Int      @id @default(autoincrement())
+  name          String   @db.VarChar(150)
+  shortName     String?  @db.VarChar(50)
+  logoPath      String?  @db.VarChar(500)
+  address       String?  @db.Text
+  phone         String?  @db.VarChar(50)
+  email         String?  @db.VarChar(255)
+  website       String?  @db.VarChar(255)
+  reportFooter  String?  @db.Text
+  timezone      String   @default("UTC") @db.VarChar(100)
+  locale        String   @default("en-US") @db.VarChar(20)
+  createdAt     DateTime @default(now()) @db.DateTime(0)
+  updatedAt     DateTime @updatedAt @db.DateTime(0)
+
+  @@map("organization")
+}
+
+// --- User Account ---
+model User {
+  id           Int      @id @default(autoincrement())
+  name         String   @db.VarChar(255)
+  username     String   @unique @db.VarChar(100)
+  email        String?  @unique @db.VarChar(255)
+  phone        String?  @db.VarChar(50)
+  passwordHash String   @db.VarChar(255)
+  status       String   @default("active") @db.VarChar(20)
+  createdAt    DateTime @default(now()) @db.DateTime(0)
+  updatedAt    DateTime @updatedAt @db.DateTime(0)
+
+  userRoleAssignments     UserRoleAssignment[]
+  inventoryPicAssignments InventoryPicAssignment[]
+  checklistLogs           ChecklistLog[]           @relation("InspectorLogs")
+  evidence                Evidence[]
+  sessions                Session[]
+
+  @@map("users")
+}
+
+// --- RBAC ---
+model Role {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique @db.VarChar(50)
+  createdAt DateTime @default(now()) @db.DateTime(0)
+
+  userRoleAssignments       UserRoleAssignment[]
+  rolePermissionAssignments RolePermissionAssignment[]
+
+  @@map("roles")
+}
+
+model Permission {
+  id        Int      @id @default(autoincrement())
+  name      String   @unique @db.VarChar(100)
+  createdAt DateTime @default(now()) @db.DateTime(0)
+
+  rolePermissionAssignments RolePermissionAssignment[]
+
+  @@map("permissions")
+}
+
+model UserRoleAssignment {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  roleId    Int
+  createdAt DateTime @default(now()) @db.DateTime(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, roleId])
+  @@map("user_role_assignments")
+}
+
+model RolePermissionAssignment {
+  id           Int      @id @default(autoincrement())
+  roleId       Int
+  permissionId Int
+  createdAt    DateTime @default(now()) @db.DateTime(0)
+
+  role       Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permission Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+
+  @@unique([roleId, permissionId])
+  @@map("role_permission_assignments")
+}
+
+// --- Areas ---
+model Area {
+  id             Int      @id @default(autoincrement())
+  name           String   @db.VarChar(100)
+  locationDetail String?  @db.VarChar(255)
+  createdAt      DateTime @default(now()) @db.DateTime(0)
+
+  inventories ComplianceInventory[]
+
+  @@map("areas")
+}
+
+// --- Asset / Inventory ---
+model InventoryCategory {
+  id   Int    @id @default(autoincrement())
+  name String @db.VarChar(100)
+  code String @unique @db.VarChar(20)
+
+  itemTypes   AssetItemType[]
+  inventories ComplianceInventory[]
+
+  @@map("inventory_categories")
+}
+
+model AssetItemType {
+  id                 Int      @id @default(autoincrement())
+  categoryId         Int
+  name               String   @db.VarChar(100)
+  code               String   @db.VarChar(20)
+  checklistFrequency String   @db.VarChar(20) // daily|weekly|monthly
+  active             Boolean  @default(true)
+  allowNA            Boolean  @default(false) @map("allow_na")
+  createdAt          DateTime @default(now()) @db.DateTime(0)
+
+  category    InventoryCategory     @relation(fields: [categoryId], references: [id])
+  templates   ChecklistTemplate[]
+  inventories ComplianceInventory[]
+
+  @@map("asset_item_types")
+}
+
+model ComplianceInventory {
+  id              Int      @id @default(autoincrement())
+  publicId        String   @unique @default(cuid()) @db.VarChar(64)
+  categoryId      Int
+  areaId          Int?
+  itemTypeId      Int?
+  assetCode       String   @unique @db.VarChar(100)
+  typeDescription String?  @db.VarChar(255)
+  specificArea    String?  @db.VarChar(255)
+  status          String?  @db.VarChar(50)
+  qty             Int?     @default(1)
+  remark          String?  @db.Text
+  qrImage         String?  @db.VarChar(255)
+  photo           String?  @db.VarChar(255)
+  createdAt       DateTime @default(now()) @db.DateTime(0)
+  updatedAt       DateTime @updatedAt @db.DateTime(0)
+
+  category                     InventoryCategory              @relation(fields: [categoryId], references: [id])
+  area                         Area?                          @relation(fields: [areaId], references: [id])
+  itemType                     AssetItemType?                 @relation(fields: [itemTypeId], references: [id])
+  picAssignments               InventoryPicAssignment[]
+  checklistLogs                ChecklistLog[]
+  evidence                     Evidence[]
+  checklistTemplateAssignments InventoryChecklistAssignment[]
+
+  @@map("compliance_inventory")
+}
+
+// --- Relational PIC ---
+model InventoryPicAssignment {
+  id          Int      @id @default(autoincrement())
+  inventoryId Int
+  userId      Int
+  createdAt   DateTime @default(now()) @db.DateTime(0)
+
+  inventory ComplianceInventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  user      User                @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([inventoryId, userId])
+  @@map("inventory_pic_assignments")
+}
+
+// --- Checklist Definition ---
+model ChecklistTemplate {
+  id          Int      @id @default(autoincrement())
+  itemTypeId  Int
+  name        String   @db.VarChar(255)
+  description String?  @db.Text
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now()) @db.DateTime(0)
+
+  itemType             AssetItemType                  @relation(fields: [itemTypeId], references: [id])
+  questions            ChecklistQuestion[]
+  templateSessions     ChecklistTemplateSession[]
+  inventoryAssignments InventoryChecklistAssignment[]
+  logs                 ChecklistLog[]
+
+  @@map("checklist_templates")
+}
+
+model ChecklistQuestion {
+  id           Int      @id @default(autoincrement())
+  templateId   Int
+  questionText String   @db.Text
+  answerType   String   @default("radio") @db.VarChar(20)
+  optionsJson  Json?
+  placeholder  String?  @db.VarChar(255)
+  helpText     String?  @db.Text
+  isRequired   Boolean  @default(true)
+  active       Boolean  @default(true)
+  sortOrder    Int      @default(0)
+  createdAt    DateTime @default(now()) @db.DateTime(0)
+
+  template ChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  logs     ChecklistLog[]
+
+  @@map("checklist_questions")
+}
+
+model InventoryChecklistAssignment {
+  id          Int      @id @default(autoincrement())
+  inventoryId Int
+  templateId  Int
+  createdAt   DateTime @default(now()) @db.DateTime(0)
+
+  inventory ComplianceInventory @relation(fields: [inventoryId], references: [id], onDelete: Cascade)
+  template  ChecklistTemplate   @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([inventoryId, templateId])
+  @@map("inventory_checklist_assignments")
+}
+
+// --- Checklist Sessions (Time Periods) ---
+model ChecklistSession {
+  id        Int      @id @default(autoincrement())
+  name      String   @db.VarChar(50)
+  code      String   @unique @db.VarChar(20)
+  startTime String   @db.VarChar(8) // HH:mm
+  endTime   String   @db.VarChar(8) // HH:mm
+  sortOrder Int      @default(0)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now()) @db.DateTime(0)
+
+  templateSessions ChecklistTemplateSession[]
+  logs             ChecklistLog[]
+
+  @@map("checklist_sessions")
+}
+
+model ChecklistTemplateSession {
+  id         Int      @id @default(autoincrement())
+  templateId Int
+  sessionId  Int
+  createdAt  DateTime @default(now()) @db.DateTime(0)
+
+  template ChecklistTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  session  ChecklistSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@unique([templateId, sessionId])
+  @@map("checklist_template_sessions")
+}
+
+// --- Checklist Logs (Occurrence Completion) ---
+enum ChecklistLogStatus {
+  ok
+  not_ok
+  na
+}
+
+model ChecklistLog {
+  id          Int                @id @default(autoincrement())
+  inventoryId Int
+  templateId  Int
+  questionId  Int?
+  sessionId   Int?
+  checkDate   DateTime           @db.Date()
+  periodKey   String             @db.VarChar(30) // YYYY-MM-DD | YYYY-MM-W1 etc
+  periodLabel String?            @db.VarChar(100)
+  status      ChecklistLogStatus
+  remark      String?            @db.Text
+  photo       String?            @db.VarChar(255)
+  checkedById Int
+  createdAt   DateTime           @default(now()) @db.DateTime(0)
+
+  inventory ComplianceInventory @relation(fields: [inventoryId], references: [id])
+  template  ChecklistTemplate   @relation(fields: [templateId], references: [id])
+  question  ChecklistQuestion?  @relation(fields: [questionId], references: [id])
+  session   ChecklistSession?   @relation(fields: [sessionId], references: [id])
+  evidence  Evidence[]
+  inspector User                @relation("InspectorLogs", fields: [checkedById], references: [id])
+
+  @@map("checklist_logs")
+}
+
+// --- Calendar / Holiday ---
+enum WorkingDayType {
+  WORKING
+  OFF
+}
+
+model WorkingDayConfiguration {
+  id        Int            @id @default(autoincrement())
+  dayOfWeek Int            @unique // 0=Sunday...6=Saturday
+  status    WorkingDayType
+  createdAt DateTime       @default(now()) @db.DateTime(0)
+
+  @@map("working_day_configuration")
+}
+
+model HolidayOverride {
+  id        Int            @id @default(autoincrement())
+  date      DateTime       @unique @db.Date()
+  name      String         @db.VarChar(255)
+  status    WorkingDayType
+  createdAt DateTime       @default(now()) @db.DateTime(0)
+
+  @@map("holiday_overrides")
+}
+
+// --- Evidence ---
+model Evidence {
+  id             Int      @id @default(autoincrement())
+  checklistLogId Int
+  inventoryId    Int
+  fileName       String   @db.VarChar(255)
+  storageKey     String   @unique @db.VarChar(500)
+  mimeType       String   @db.VarChar(100)
+  sizeBytes      Int
+  uploadedById   Int
+  createdAt      DateTime @default(now()) @db.DateTime(0)
+
+  checklistLog ChecklistLog @relation(fields: [checklistLogId], references: [id])
+  inventory    ComplianceInventory @relation(fields: [inventoryId], references: [id])
+  uploadedBy   User                @relation(fields: [uploadedById], references: [id])
+
+  @@map("evidence")
+}
+
+// --- Notification Foundation ---
+enum NotificationChannel {
+  WHATSAPP
+  EMAIL
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
+model Notification {
+  id           Int                 @id @default(autoincrement())
+  userId       Int
+  channel      NotificationChannel
+  entityType   String              @db.VarChar(50)
+  entityId     Int?
+  subject      String              @db.VarChar(255)
+  body         String              @db.Text
+  status       NotificationStatus  @default(PENDING)
+  provider     String?             @db.VarChar(50)
+  error        String?             @db.Text
+  attempt      Int                 @default(0)
+  scheduledFor DateTime            @db.DateTime(0)
+  sentAt       DateTime?           @db.DateTime(0)
+  createdAt    DateTime            @default(now()) @db.DateTime(0)
+  updatedAt    DateTime            @updatedAt @db.DateTime(0)
+
+  @@map("notifications")
+}
+
+model NotificationPreference {
+  id        Int                 @id @default(autoincrement())
+  userId    Int
+  channel   NotificationChannel
+  enabled   Boolean             @default(true)
+  createdAt DateTime            @default(now()) @db.DateTime(0)
+
+  @@unique([userId, channel])
+  @@map("notification_preferences")
+}
+
+// --- Audit Log ---
+model AuditLog {
+  id         Int      @id @default(autoincrement())
+  userId     Int?
+  action     String   @db.VarChar(100)
+  entityType String?  @db.VarChar(100)
+  entityId   Int?
+  beforeData Json?
+  afterData  Json?
+  ipAddress  String?  @db.VarChar(45)
+  createdAt  DateTime @default(now()) @db.DateTime(0)
+
+  @@map("audit_logs")
+}
+
+// --- Session (Prompt 04: Authentication) ---
+model Session {
+  id        Int      @id @default(autoincrement())
+  tokenHash String   @unique @db.VarChar(64) // SHA-256 hash of the raw session token
+  userId    Int
+  expires   DateTime @db.DateTime(0)
+  ipAddress String?  @db.VarChar(45)
+  userAgent String?  @db.Text
+  createdAt DateTime @default(now()) @db.DateTime(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("sessions")
+}

@@ -1,0 +1,42 @@
+model ChecklistLog {
+  id          Int                @id @default(autoincrement())
+  inventoryId Int
+  templateId  Int
+  questionId  Int?
+  sessionId   Int?
+  checkDate   DateTime           @db.Date()
+  periodKey   String             @db.VarChar(30)
+  periodLabel String?            @db.VarChar(100)
+  status      ChecklistLogStatus
+  remark      String?            @db.Text
+  photo       String?            @db.VarChar(255)
+  checkedById Int
+  createdAt   DateTime           @default(now()) @db.DateTime(0)
+
+  inventory ComplianceInventory @relation(fields: [inventoryId], references: [id])
+  template  ChecklistTemplate   @relation(fields: [templateId], references: [id])
+  question  ChecklistQuestion?  @relation(fields: [questionId], references: [id])
+  session   ChecklistSession?   @relation(fields: [sessionId], references: [id])
+  evidence  Evidence[]
+  inspector User                @relation("InspectorLogs", fields: [checkedById], references: [id])
+
+  @@map("checklist_logs")
+}
+
+model Evidence {
+  id             Int      @id @default(autoincrement())
+  checklistLogId Int
+  inventoryId    Int
+  fileName       String   @db.VarChar(255)
+  storageKey     String   @unique @db.VarChar(500)
+  mimeType       String   @db.VarChar(100)
+  sizeBytes      Int
+  uploadedById   Int
+  createdAt      DateTime @default(now()) @db.DateTime(0)
+
+  checklistLog ChecklistLog @relation(fields: [checklistLogId], references: [id])
+  inventory    ComplianceInventory @relation(fields: [inventoryId], references: [id])
+  uploadedBy   User                @relation(fields: [uploadedById], references: [id])
+
+  @@map("evidence")
+}

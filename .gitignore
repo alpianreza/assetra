@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Lockfiles (npm/yarn not used)
+package-lock.json
+yarn.lock
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Storage (customer data kept out of git)
+storage/uploads/*
+storage/reports/*
+!storage/uploads/.gitkeep
+!storage/reports/.gitkeep
+storage/evidence/*
+!storage/evidence/.gitkeep
+
+# Local artifacts / credentials
+cookies.txt
+docs.rar
+.claude/
+*.session
+
+# IDE
+.idea/
+.vscode/
