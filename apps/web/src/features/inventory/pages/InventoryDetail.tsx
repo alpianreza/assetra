@@ -38,6 +38,15 @@ export function InventoryDetail() {
   const periods = periodsQuery.data?.data?.periods ?? [];
   const history = historyQuery.data?.data?.logs ?? [];
 
+  // Keep one template reference for the calendar button, regardless of whether
+  // the current month still has an editable occurrence. The calendar itself
+  // decides which dates can be selected.
+  const templateReferences = new Map<number, any>();
+  for (const period of periods) {
+    if (!templateReferences.has(period.templateId)) templateReferences.set(period.templateId, period);
+  }
+  const firstChecklistTemplate = Array.from(templateReferences.values())[0];
+
   // The API sorts newest first. Keep one recommended editable occurrence per
   // template/session so a daily checklist does not render dozens of buttons.
   const recommended = new Map<string, any>();
@@ -47,7 +56,13 @@ export function InventoryDetail() {
     if (!recommended.has(key)) recommended.set(key, period);
   }
   const checklistActions = Array.from(recommended.values());
-  const firstChecklist = checklistActions[0];
+
+  const openChecklistCalendar = (template: any) => {
+    const query = new URLSearchParams({ templateId: String(template.templateId) });
+    const periodYm = typeof template.periodKey === 'string' ? template.periodKey.slice(0, 7) : '';
+    if (/^\d{4}-\d{2}$/.test(periodYm)) query.set('ym', periodYm);
+    navigate(`/compliance/inventory/${inventoryId}/execution?${query.toString()}`);
+  };
 
   const openExecution = (period: any) => {
     const query = new URLSearchParams({
@@ -94,8 +109,13 @@ export function InventoryDetail() {
             </button>
           )}
           {canExecute && (
-            <button disabled={!firstChecklist} onClick={() => firstChecklist && openExecution(firstChecklist)} className="px-4 py-2 primary text-white rounded-lg text-sm disabled:opacity-50">
-              Checklist
+            <button
+              disabled={periodsQuery.isLoading || !firstChecklistTemplate}
+              onClick={() => firstChecklistTemplate && openChecklistCalendar(firstChecklistTemplate)}
+              className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm disabled:opacity-50"
+              title={!periodsQuery.isLoading && !firstChecklistTemplate ? 'Belum ada checklist untuk jenis item ini' : 'Buka kalender checklist'}
+            >
+              {periodsQuery.isLoading ? 'Memuat Checklist...' : 'Checklist'}
             </button>
           )}
           <button onClick={() => navigate(backTarget)} className="px-3 py-2 text-sm text-muted-foreground hover:underline">← Kembali</button>
@@ -159,7 +179,14 @@ export function InventoryDetail() {
           {periodsQuery.isLoading ? (
             <p className="p-6 text-center text-muted-foreground">Memuat periode checklist...</p>
           ) : checklistActions.length === 0 ? (
-            <p className="p-6 text-center text-muted-foreground">Tidak ada checklist yang dapat diisi saat ini.</p>
+            <div className="p-6 text-center">
+              <p className="text-muted-foreground">Tidak ada checklist yang dapat diisi saat ini.</p>
+              {firstChecklistTemplate && (
+                <button onClick={() => openChecklistCalendar(firstChecklistTemplate)} className="mt-3 px-4 py-2 border border-primary text-primary rounded-lg text-sm">
+                  Buka Kalender Checklist
+                </button>
+              )}
+            </div>
           ) : (
             <ul className="divide-y divide-border">
               {checklistActions.map((period: any) => (
@@ -170,7 +197,7 @@ export function InventoryDetail() {
                       {period.periodLabel}{period.sessionName ? ` · ${period.sessionName}` : ''} · {STATUS_LABELS[period.status] ?? period.status}
                     </p>
                   </div>
-                  <button onClick={() => openExecution(period)} className="px-4 py-2 primary text-white rounded-lg text-sm">Isi Checklist</button>
+                  <button onClick={() => openExecution(period)} className="px-4 py-2 bg-primary text-primary-foreground rounded-lg text-sm">Isi Checklist</button>
                 </li>
               ))}
             </ul>
