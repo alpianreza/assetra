@@ -5,7 +5,13 @@ import { RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { SanitizedUserDto } from '../auth/dto/user-response.dto';
 import { InventoryService } from './inventory.service';
-import { CreateInventoryDto, UpdateInventoryDto, UpdateInventoryStatusDto, QueryInventoryDto } from './inventory.dto';
+import {
+  CreateInventoryDto,
+  UpdateInventoryDto,
+  UpdateInventoryStatusDto,
+  QueryInventoryDto,
+  PreviewAssetCodeDto,
+} from './inventory.dto';
 
 @Controller('inventory')
 @UseGuards(SessionAuthGuard, PermissionsGuard)
@@ -16,6 +22,17 @@ export class InventoryController {
   @RequirePermissions('inventory.view')
   async list(@Query() query: QueryInventoryDto) {
     const data = await this.inventoryService.list(query);
+    return { success: true, data };
+  }
+
+  /**
+   * Preview the auto-generated nomor inventaris for a jenis item.
+   * Declared before `:id` so the literal path is not parsed as an id.
+   */
+  @Get('preview-asset-code')
+  @RequirePermissions('inventory.create')
+  async previewAssetCode(@Query() query: PreviewAssetCodeDto) {
+    const data = await this.inventoryService.previewNextAssetCode(query.itemTypeId);
     return { success: true, data };
   }
 

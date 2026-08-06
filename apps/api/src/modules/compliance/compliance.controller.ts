@@ -19,10 +19,17 @@ export class ComplianceController {
     return { success: true, data };
   }
 
+  /**
+   * Checklist calendar for one month. `ym` is YYYY-MM and defaults to the
+   * current month.
+   */
   @Get('inventory/:inventoryId/periods')
   @RequirePermissions('compliance.view')
-  async periods(@Param('inventoryId', ParseIntPipe) inventoryId: number) {
-    const data = await this.complianceService.inventoryPeriods(inventoryId);
+  async periods(
+    @Param('inventoryId', ParseIntPipe) inventoryId: number,
+    @Query('ym') ym?: string,
+  ) {
+    const data = await this.complianceService.inventoryPeriods(inventoryId, ym);
     return { success: true, data };
   }
 

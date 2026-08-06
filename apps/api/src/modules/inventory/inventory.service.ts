@@ -4,6 +4,9 @@ import { AuditService } from '../auth/audit.service';
 import { CreateInventoryDto, UpdateInventoryDto, QueryInventoryDto, INVENTORY_STATUSES, InventoryStatus } from './inventory.dto';
 import { Prisma } from '@prisma/client';
 
+/** Retries when two people create an inventory of the same type at once. */
+const ASSET_CODE_MAX_ATTEMPTS = 5;
+
 @Injectable()
 export class InventoryService {
   constructor(
@@ -112,7 +115,6 @@ export class InventoryService {
       specificArea: inventory.specificArea ?? null,
       status: inventory.status ?? 'unknown',
       remark: inventory.remark ?? null,
-      qty: inventory.qty,
       qrImage: inventory.qrImage,
       photo: inventory.photo,
       createdAt: inventory.createdAt,
@@ -131,17 +133,67 @@ export class InventoryService {
     };
   }
 
+  // ------------------------------------------------------------------
+  // Asset code generation (KODEKATEGORI-KODEITEM-NOURUT)
+  // ------------------------------------------------------------------
+
+  /**
+   * Show the code the next inventory of this item type would receive, so the
+   * form can display a read-only preview. Not reserved: the definitive code is
+   * assigned on save.
+   */
+  async previewNextAssetCode(itemTypeId: number) {
+    const itemType = await this.prisma.assetItemType.findUnique({
+      where: { id: itemTypeId },
+      include: { category: true },
+    });
+    if (!itemType) throw new NotFoundException('Jenis Item tidak ditemukan');
+
+    const assetCode = await this.generateAssetCode(itemType.category.code, itemType.code);
+    return {
+      assetCode,
+      categoryId: itemType.categoryId,
+      categoryCode: itemType.category.code,
+      itemTypeCode: itemType.code,
+    };
+  }
+
+  /**
+   * Build the next sequential asset code for a category/item-type pair.
+   *
+   * Unlike the EAMS version, which read the newest row by id, this takes the
+   * highest numeric suffix so deletions and out-of-order inserts cannot hand
+   * out a code that already exists.
+   */
+  private async generateAssetCode(categoryCode: string, itemTypeCode: string): Promise<string> {
+    const prefix = `${categoryCode.trim().toUpperCase()}-${itemTypeCode.trim().toUpperCase()}`;
+
+    const existing = await this.prisma.complianceInventory.findMany({
+      where: { assetCode: { startsWith: `${prefix}-` } },
+      select: { assetCode: true },
+    });
+
+    let highest = 0;
+    for (const row of existing) {
+      const matched = /-(\d+)$/.exec(row.assetCode);
+      if (!matched) continue;
+      const value = Number.parseInt(matched[1], 10);
+      if (Number.isFinite(value) && value > highest) highest = value;
+    }
+
+    return `${prefix}-${String(highest + 1).padStart(3, '0')}`;
+  }
+
   async create(dto: CreateInventoryDto, actorId: number) {
     // Validate foreign keys
-    const itemType = await this.prisma.assetItemType.findUnique({ where: { id: dto.itemTypeId } });
+    const itemType = await this.prisma.assetItemType.findUnique({
+      where: { id: dto.itemTypeId },
+      include: { category: true },
+    });
     if (!itemType) throw new NotFoundException('Jenis Item tidak ditemukan');
 
     const area = await this.prisma.area.findUnique({ where: { id: dto.areaId } });
     if (!area) throw new NotFoundException('Area tidak ditemukan');
-
-    // Check for unique assetCode
-    const existing = await this.prisma.complianceInventory.findUnique({ where: { assetCode: dto.assetCode } });
-    if (existing) throw new ConflictException('Nomor inventaris sudah digunakan');
 
     // Validate PIC users (must be active)
     const picUserIds = dto.picUserIds ?? [];
@@ -155,30 +207,51 @@ export class InventoryService {
       }
     }
 
-    const inventory = await this.prisma.$transaction(async (tx) => {
-      const newInventory = await tx.complianceInventory.create({
-        data: {
-          assetCode: dto.assetCode,
-          categoryId: itemType.categoryId, // Derived from itemType
-          itemTypeId: dto.itemTypeId,
-          areaId: dto.areaId,
-          specificArea: dto.specificArea,
-          typeDescription: dto.typeDescription,
-          status: dto.status,
-          remark: dto.remark,
-        },
-      });
+    let inventory: { id: number; assetCode: string } | null = null;
 
-      if (picUserIds.length > 0) {
-        await tx.inventoryPicAssignment.createMany({
-          data: picUserIds.map((userId) => ({
-            inventoryId: newInventory.id,
-            userId,
-          })),
+    for (let attempt = 1; attempt <= ASSET_CODE_MAX_ATTEMPTS; attempt++) {
+      const assetCode = await this.generateAssetCode(itemType.category.code, itemType.code);
+
+      try {
+        inventory = await this.prisma.$transaction(async (tx) => {
+          const newInventory = await tx.complianceInventory.create({
+            data: {
+              assetCode,
+              categoryId: itemType.categoryId, // Derived from itemType
+              itemTypeId: dto.itemTypeId,
+              areaId: dto.areaId,
+              specificArea: dto.specificArea,
+              typeDescription: dto.typeDescription,
+              status: dto.status,
+              remark: dto.remark,
+            },
+          });
+
+          if (picUserIds.length > 0) {
+            await tx.inventoryPicAssignment.createMany({
+              data: picUserIds.map((userId) => ({
+                inventoryId: newInventory.id,
+                userId,
+              })),
+            });
+          }
+          return { id: newInventory.id, assetCode: newInventory.assetCode };
         });
+        break;
+      } catch (error) {
+        const isDuplicate =
+          error instanceof Prisma.PrismaClientKnownRequestError && error.code === 'P2002';
+        if (isDuplicate && attempt < ASSET_CODE_MAX_ATTEMPTS) continue;
+        if (isDuplicate) {
+          throw new ConflictException('Gagal membuat nomor inventaris unik, silakan coba lagi');
+        }
+        throw error;
       }
-      return newInventory;
-    });
+    }
+
+    if (!inventory) {
+      throw new ConflictException('Gagal membuat nomor inventaris unik, silakan coba lagi');
+    }
 
     await this.auditService.log(actorId, 'INVENTORY_CREATED', 'ComplianceInventory', inventory.id, undefined, null, { assetCode: inventory.assetCode });
     return { id: inventory.id, assetCode: inventory.assetCode };
@@ -189,21 +262,18 @@ export class InventoryService {
     if (!inventory) throw new NotFoundException('Inventaris tidak ditemukan');
 
     // Validate foreign keys if provided
+    let categoryId = inventory.categoryId;
     if (dto.itemTypeId) {
       const itemType = await this.prisma.assetItemType.findUnique({ where: { id: dto.itemTypeId } });
       if (!itemType) throw new NotFoundException('Jenis Item tidak ditemukan');
-      dto.categoryId = itemType.categoryId; // Update derived category
+      categoryId = itemType.categoryId; // Derived category follows the item type
     }
     if (dto.areaId) {
       const area = await this.prisma.area.findUnique({ where: { id: dto.areaId } });
       if (!area) throw new NotFoundException('Area tidak ditemukan');
     }
 
-    // Check for unique assetCode if changed
-    if (dto.assetCode && dto.assetCode !== inventory.assetCode) {
-      const existing = await this.prisma.complianceInventory.findUnique({ where: { assetCode: dto.assetCode } });
-      if (existing) throw new ConflictException('Nomor inventaris sudah digunakan');
-    }
+    // assetCode is immutable: it is issued once at creation and printed on the QR.
 
     // Validate new PIC users (must be active)
     const newPicUserIds = dto.picUserIds ?? null; // null means no change
@@ -221,8 +291,7 @@ export class InventoryService {
       const updated = await tx.complianceInventory.update({
         where: { id },
         data: {
-          assetCode: dto.assetCode ?? inventory.assetCode,
-          categoryId: dto.categoryId ?? inventory.categoryId,
+          categoryId,
           itemTypeId: dto.itemTypeId ?? inventory.itemTypeId,
           areaId: dto.areaId ?? inventory.areaId,
           specificArea: dto.specificArea ?? inventory.specificArea,

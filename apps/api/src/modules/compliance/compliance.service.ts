@@ -9,6 +9,8 @@ import { ChecklistLogStatus } from '@prisma/client';
 export const ANSWER_STATUSES = ['ok', 'not_ok', 'na'] as const;
 export type AnswerStatus = (typeof ANSWER_STATUSES)[number];
 
+const YM_PATTERN = /^(\d{4})-(\d{2})$/;
+
 @Injectable()
 export class ComplianceService {
   constructor(
@@ -52,50 +54,111 @@ export class ComplianceService {
   // ------------------------------------------------------------------
   // Periods for an inventory (availability calendar)
   // ------------------------------------------------------------------
-  async inventoryPeriods(inventoryId: number) {
+
+  /**
+   * Build the checklist calendar for one calendar month.
+   *
+   * Mirrors the EAMS calendar: every period of the month is listed, including
+   * future ones (rendered as locked), instead of a rolling trailing window.
+   */
+  async inventoryPeriods(inventoryId: number, ym?: string) {
     const inventory = await this.getInventoryWithCompliance(inventoryId);
     const assignments = inventory.checklistTemplateAssignments;
+    const month = this.resolveMonth(ym);
 
     if (assignments.length === 0) {
-      return { inventoryId, periods: [] };
+      return { inventoryId, ym: month.ym, periods: [] };
     }
 
     const now = new Date();
     const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-    const periods: any[] = [];
+    // One calendar lookup for the whole month instead of one per period.
+    const monthStart = new Date(month.year, month.month - 1, 1);
+    const monthEnd = new Date(month.year, month.month, 0);
+    const offdays = await this.periodEngine.offdayDatesBetween(monthStart, monthEnd);
 
-    for (const assignment of assignments) {
+    const allowNA = await this.periodEngine.resolveAllowNA(inventory.itemTypeId);
+
+    // Sessions for every assigned template, fetched once.
+    const templateIds = assignments.map(a => a.template.id);
+    const templateSessions = await this.prisma.checklistTemplateSession.findMany({
+      where: { templateId: { in: templateIds } },
+      include: { session: true },
+      orderBy: { session: { sortOrder: 'asc' } },
+    });
+    const sessionsByTemplate = new Map<number, typeof templateSessions[number]['session'][]>();
+    for (const ts of templateSessions) {
+      const list = sessionsByTemplate.get(ts.templateId) ?? [];
+      list.push(ts.session);
+      sessionsByTemplate.set(ts.templateId, list);
+    }
+
+    // Pre-compute the calendar for each template so we know which keys to load.
+    const plans = assignments.map(assignment => {
       const template = assignment.template;
       const frequency = template.itemType.checklistFrequency as ComplianceFrequency;
-      const allowNA = await this.periodEngine.resolveAllowNA(inventory.itemTypeId);
+      const safeFrequency: ComplianceFrequency = this.periodEngine.isFrequency(frequency) ? frequency : 'monthly';
+      return {
+        template,
+        frequency: safeFrequency,
+        calendar: this.periodEngine.generateCalendarPeriods(safeFrequency, month.year, month.month),
+      };
+    });
 
-      // Template sessions
-      const templateSessions = await this.prisma.checklistTemplateSession.findMany({
-        where: { templateId: template.id },
-        include: { session: true },
-        orderBy: { session: { sortOrder: 'asc' } },
-      });
-      const sessions = templateSessions.map(ts => ts.session);
+    const periodKeys = Array.from(new Set(plans.flatMap(p => p.calendar.map(c => c.periodKey))));
 
-      // Build a set of candidate periods: today + recent history window
-      // Daily: last 30 days; Weekly: last 8 weeks; Monthly: last 4 months
-      const windowDays = frequency === 'daily' ? 30 : frequency === 'weekly' ? 56 : 120;
-      const start = new Date(today);
-      start.setDate(start.getDate() - windowDays);
+    // Existing submissions + answer counts, batched.
+    const [headers, answerGroups] = await Promise.all([
+      this.prisma.checklistLog.findMany({
+        where: { inventoryId, questionId: null, periodKey: { in: periodKeys } },
+        select: { id: true, templateId: true, periodKey: true, sessionId: true, createdAt: true, checkedById: true },
+        orderBy: { createdAt: 'desc' },
+      }),
+      this.prisma.checklistLog.groupBy({
+        by: ['templateId', 'periodKey', 'sessionId'],
+        where: { inventoryId, questionId: { not: null }, periodKey: { in: periodKeys } },
+        _count: { _all: true },
+      }),
+    ]);
 
-      const periodKeys = this.periodEngine.periodsBetween(frequency, start, today);
+    const headerByKey = new Map<string, typeof headers[number]>();
+    for (const header of headers) {
+      const key = this.occKey(header.templateId, header.periodKey, header.sessionId);
+      if (!headerByKey.has(key)) headerByKey.set(key, header);
+    }
 
-      for (const periodKey of periodKeys) {
-        const sessionList = sessions.length > 0 ? sessions : [null];
+    const answerCountByKey = new Map<string, number>();
+    for (const group of answerGroups) {
+      answerCountByKey.set(this.occKey(group.templateId, group.periodKey, group.sessionId), group._count._all);
+    }
+
+    const periods: any[] = [];
+
+    for (const { template, frequency, calendar } of plans) {
+      const sessions = sessionsByTemplate.get(template.id) ?? [];
+      const sessionList: (typeof sessions[number] | null)[] = sessions.length > 0 ? sessions : [null];
+
+      for (const calendarPeriod of calendar) {
+        const { periodKey } = calendarPeriod;
+        const offday = this.periodEngine.isOffdayPeriod(frequency, periodKey, offdays);
+
         for (const session of sessionList) {
-          const periodStart = this.periodEngine.periodStart(frequency, periodKey, inventory.createdAt);
-                    const _isFuture = false; // placeholder
-          const offday = !(await this.periodEngine.isWorkingDay(periodStart));
+          const key = this.occKey(template.id, periodKey, session?.id ?? null);
+          const header = headerByKey.get(key) ?? null;
 
-          // Determine existing completion
-          const existing = await this.findOccurrence(inventoryId, template.id, periodKey, session?.id ?? null);
-          const status = this.deriveOccurrenceStatus(frequency, periodStart, today, offday, existing);
+          const status = this.periodEngine.resolveStatus({
+            frequency,
+            periodKey,
+            hasLog: header !== null,
+            offday,
+            now: today,
+          });
+
+          const editable =
+            status !== 'done' &&
+            status !== 'offday' &&
+            this.periodEngine.isPeriodEditable(frequency, periodKey, today);
 
           periods.push({
             inventoryId,
@@ -103,36 +166,52 @@ export class ComplianceService {
             templateName: template.name,
             frequency,
             periodKey,
-            periodLabel: this.periodLabel(frequency, periodKey),
+            periodLabel: calendarPeriod.label,
+            periodStart: calendarPeriod.start,
+            periodEnd: calendarPeriod.end,
             sessionId: session?.id ?? null,
             sessionName: session?.name ?? null,
             offday,
             status,
+            editable,
             allowNA,
             questionCount: template.questions?.length ?? 0,
-            answeredCount: existing ? await this.countAnswersForOccurrence(inventoryId, template.id, periodKey, session?.id ?? null) : 0,
-            submittedAt: existing?.createdAt ?? null,
+            answeredCount: answerCountByKey.get(key) ?? 0,
+            submittedAt: header?.createdAt ?? null,
           });
         }
       }
     }
 
-    // Sort: by periodKey descending (most recent first), then session order
+    // Most recent period first, then session order.
     periods.sort((a, b) => {
       if (a.periodKey !== b.periodKey) return b.periodKey.localeCompare(a.periodKey);
       return (a.sessionName ?? '').localeCompare(b.sessionName ?? '');
     });
 
-    return { inventoryId, periods };
+    return { inventoryId, ym: month.ym, periods };
   }
 
-  private periodLabel(frequency: string, periodKey: string): string {
-    if (frequency === 'daily') return periodKey;
-    if (frequency === 'weekly') {
-      const [, w] = periodKey.split('-W');
-      return `W${w}`;
+  private resolveMonth(ym?: string): { year: number; month: number; ym: string } {
+    if (!ym) {
+      const now = new Date();
+      const year = now.getFullYear();
+      const month = now.getMonth() + 1;
+      return { year, month, ym: `${year}-${String(month).padStart(2, '0')}` };
     }
-    return periodKey;
+
+    const matched = YM_PATTERN.exec(ym);
+    if (!matched) throw new BadRequestException('Format bulan harus YYYY-MM');
+
+    const year = Number(matched[1]);
+    const month = Number(matched[2]);
+    if (month < 1 || month > 12) throw new BadRequestException('Bulan tidak valid');
+
+    return { year, month, ym };
+  }
+
+  private occKey(templateId: number, periodKey: string, sessionId: number | null): string {
+    return `${templateId}:${periodKey}:${sessionId ?? 'none'}`;
   }
 
   private async findOccurrence(inventoryId: number, templateId: number, periodKey: string, sessionId: number | null) {
@@ -160,19 +239,29 @@ export class ComplianceService {
     });
   }
 
-  private deriveOccurrenceStatus(
-    frequency: string,
-    periodStart: Date,
-    today: Date,
-    offday: boolean,
-    existing: any,
-  ): 'completed' | 'pending' | 'late' | 'future' | 'offday' {
-    if (offday) return 'offday';
-    if (periodStart.getTime() > today.getTime()) return 'future';
-    if (existing) return 'completed';
-    // Pending vs late
-    const late = this.periodEngine.isPeriodLate(frequency as any, periodStart, today);
-    return late ? 'late' : 'pending';
+  /**
+   * Shared guard for reading or writing an occurrence: validates the period key
+   * and rejects future, off-day, and expired periods.
+   */
+  private async assertPeriodOpen(frequency: ComplianceFrequency, periodKey: string) {
+    if (!this.periodEngine.isValidPeriodKey(frequency, periodKey)) {
+      throw new BadRequestException(`Kunci periode "${periodKey}" tidak valid untuk frekuensi ${frequency}`);
+    }
+
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+    if (this.periodEngine.isPeriodFuture(frequency, periodKey, today)) {
+      throw new BadRequestException('Checklist untuk periode masa depan tidak dapat dilakukan');
+    }
+
+    if (await this.periodEngine.isOffdayPeriodAsync(frequency, periodKey)) {
+      throw new BadRequestException('Periode ini adalah hari libur');
+    }
+
+    if (!this.periodEngine.isPeriodEditable(frequency, periodKey, today)) {
+      throw new BadRequestException('Periode ini sudah melewati batas waktu pengisian');
+    }
   }
 
   // ------------------------------------------------------------------
@@ -199,29 +288,17 @@ export class ComplianceService {
     }
 
     const frequency = template.itemType.checklistFrequency as ComplianceFrequency;
-    const periodStart = this.periodEngine.periodStart(frequency, periodKey, inventory.createdAt);
-    const today = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
-
-    // Future block
-    if (periodStart.getTime() > today.getTime()) {
-      throw new BadRequestException('Checklist untuk periode masa depan tidak dapat dilakukan');
-    }
-
-    // Offday block (a checklist cannot be executed on an off day)
-    const offday = !(await this.periodEngine.isWorkingDay(periodStart));
-    if (offday) {
-      throw new BadRequestException('Periode ini adalah hari libur');
-    }
+    await this.assertPeriodOpen(frequency, periodKey);
 
     // Validate session if provided
     let session: any = null;
     if (sessionId != null) {
-      const assigned = await this.prisma.checklistTemplateSession.findUnique({
+      const assignedSession = await this.prisma.checklistTemplateSession.findUnique({
         where: { templateId_sessionId: { templateId, sessionId } },
         include: { session: true },
       });
-      if (!assigned) throw new BadRequestException('Sesi tidak terpasang pada template ini');
-      session = assigned.session;
+      if (!assignedSession) throw new BadRequestException('Sesi tidak terpasang pada template ini');
+      session = assignedSession.session;
     } else {
       // If template has sessions but none provided, reject (session required)
       const templateSessions = await this.prisma.checklistTemplateSession.count({ where: { templateId } });
@@ -259,7 +336,10 @@ export class ComplianceService {
         name: template.name,
         frequency,
       },
-      period: { key: periodKey, label: this.periodLabel(frequency, periodKey) },
+      period: {
+        key: periodKey,
+        label: this.periodEngine.periodLabel(frequency, periodKey),
+      },
       session: session ? { id: session.id, name: session.name } : null,
       allowNA,
       questions: template.questions.map(q => ({
@@ -305,19 +385,8 @@ export class ComplianceService {
       }
     }
 
-    // Future block
     const frequency = template.itemType.checklistFrequency as ComplianceFrequency;
-    const periodStart = this.periodEngine.periodStart(frequency, periodKey, inventory.createdAt);
-    const today = new Date(new Date().getFullYear(), new Date().getMonth(), new Date().getDate());
-    if (periodStart.getTime() > today.getTime()) {
-      throw new BadRequestException('Checklist untuk periode masa depan tidak dapat dilakukan');
-    }
-
-    // Offday block
-    const offday = !(await this.periodEngine.isWorkingDay(periodStart));
-    if (offday) {
-      throw new BadRequestException('Periode ini adalah hari libur');
-    }
+    await this.assertPeriodOpen(frequency, periodKey);
 
     // Session validation (same as execution)
     if (sessionId != null) {
@@ -334,15 +403,9 @@ export class ComplianceService {
 
     // Unique occurrence: check for existing header
     const occKey = this.periodEngine.occurrenceKey(inventoryId, templateId, periodKey, sessionId);
-    const existingHeader = await this.prisma.checklistLog.findFirst({
-      where: {
-        inventoryId,
-        templateId,
-        periodKey,
-        sessionId: sessionId ?? null,
-        questionId: null,
-      },
-    });
+    const existingHeader = await this.findOccurrence(inventoryId, templateId, periodKey, sessionId);
+    const periodLabel = this.periodEngine.periodLabel(frequency, periodKey);
+    const checkDate = new Date();
 
     const result = await this.prisma.$transaction(async (tx) => {
       // Remove previous answer logs for this occurrence (recheck policy: replace current answers)
@@ -360,16 +423,16 @@ export class ComplianceService {
       const header = existingHeader
         ? await tx.checklistLog.update({
             where: { id: existingHeader.id },
-            data: { checkedById: actorId, checkDate: new Date(), remark: null },
+            data: { checkedById: actorId, checkDate, periodLabel, remark: null },
           })
         : await tx.checklistLog.create({
             data: {
               inventoryId,
               templateId,
               sessionId: sessionId ?? null,
-              checkDate: new Date(),
+              checkDate,
               periodKey,
-              periodLabel: this.periodLabel(frequency, periodKey),
+              periodLabel,
               status: 'ok', // header status is aggregate
               checkedById: actorId,
               questionId: null,
@@ -384,9 +447,9 @@ export class ComplianceService {
             templateId,
             questionId: a.questionId,
             sessionId: sessionId ?? null,
-            checkDate: new Date(),
+            checkDate,
             periodKey,
-            periodLabel: this.periodLabel(frequency, periodKey),
+            periodLabel,
             status: a.status,
             checkedById: actorId,
           },
@@ -404,11 +467,23 @@ export class ComplianceService {
   // History for an inventory
   // ------------------------------------------------------------------
   async history(inventoryId: number) {
-    const logs = await this.prisma.checklistLog.findMany({
-      where: { inventoryId, questionId: null },
-      include: { template: { include: { itemType: true } }, session: true },
-      orderBy: [{ checkDate: 'desc' }, { id: 'desc' }],
-    });
+    const [logs, answerGroups] = await Promise.all([
+      this.prisma.checklistLog.findMany({
+        where: { inventoryId, questionId: null },
+        include: { template: { include: { itemType: true } }, session: true },
+        orderBy: [{ checkDate: 'desc' }, { id: 'desc' }],
+      }),
+      this.prisma.checklistLog.groupBy({
+        by: ['templateId', 'periodKey', 'sessionId'],
+        where: { inventoryId, questionId: { not: null } },
+        _count: { _all: true },
+      }),
+    ]);
+
+    const answerCountByKey = new Map<string, number>();
+    for (const group of answerGroups) {
+      answerCountByKey.set(this.occKey(group.templateId, group.periodKey, group.sessionId), group._count._all);
+    }
 
     return {
       inventoryId,
@@ -423,7 +498,7 @@ export class ComplianceService {
         sessionName: l.session?.name ?? null,
         checkDate: l.checkDate,
         checkedById: l.checkedById,
-        answerCount: l.remark ? 0 : 0, // counts computed separately
+        answerCount: answerCountByKey.get(this.occKey(l.templateId, l.periodKey, l.sessionId)) ?? 0,
         status: l.status,
       })),
     };
