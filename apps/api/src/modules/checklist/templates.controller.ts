@@ -19,10 +19,29 @@ export class ChecklistTemplatesController {
     return { success: true, data };
   }
 
+  /**
+   * Checklist Master view: templates grouped by Jenis Item.
+   * Declared before `:id` so the literal path is not parsed as an id.
+   */
+  @Get('grouped')
+  @RequirePermissions('checklist_template.view')
+  async listGrouped() {
+    const data = await this.templatesService.listGrouped();
+    return { success: true, data };
+  }
+
   @Get(':id')
   @RequirePermissions('checklist_template.view')
   async getById(@Param('id', ParseIntPipe) id: number) {
     const data = await this.templatesService.getById(id);
+    return { success: true, data };
+  }
+
+  /** Create one empty checklist master per active Jenis Item that lacks one. */
+  @Post('provision')
+  @RequirePermissions('checklist_template.create')
+  async provision(@CurrentUser() user: SanitizedUserDto) {
+    const data = await this.templatesService.provisionMissing(user.id);
     return { success: true, data };
   }
 

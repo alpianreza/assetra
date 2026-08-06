@@ -18,6 +18,20 @@ export class CreateQuestionDto {
   @IsBoolean()
   @IsOptional()
   isRequired?: boolean = true;
+
+  /** Mirrors EAMS `checklist_master.require_photo`. */
+  @IsBoolean()
+  @IsOptional()
+  requirePhoto?: boolean = false;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(255)
+  placeholder?: string;
+
+  @IsString()
+  @IsOptional()
+  helpText?: string;
 }
 
 export class UpdateQuestionDto {
@@ -37,6 +51,19 @@ export class UpdateQuestionDto {
   @IsBoolean()
   @IsOptional()
   isRequired?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  requirePhoto?: boolean;
+
+  @IsString()
+  @IsOptional()
+  @MaxLength(255)
+  placeholder?: string;
+
+  @IsString()
+  @IsOptional()
+  helpText?: string;
 
   @IsInt()
   @IsOptional()

@@ -15,6 +15,8 @@ import { SettingsPage } from '../features/settings/pages/SettingsPage';
 import { InventoryPage } from '../features/inventory/pages/InventoryPage';
 import { InventoryDetail } from '../features/inventory/pages/InventoryDetail';
 import { InventoryForm } from '../features/inventory/pages/InventoryForm';
+import { ChecklistMasterPage } from '../features/checklist-templates/pages/ChecklistMasterPage';
+import { TemplateForm } from '../features/checklist-templates/pages/TemplateForm';
 import { SessionsPage } from '../features/checklist-sessions/pages/SessionsPage';
 import { QrCenterPage } from '../features/qr/pages/QrCenterPage';
 import { PublicQrPage } from '../features/qr/pages/PublicQrPage';
@@ -35,12 +37,13 @@ export default function App() {
         <Route element={<AuthProvider><Layout /></AuthProvider>}>
           <Route path="/" element={<DashboardPage />} />
           <Route path="/inventory" element={<InventoryPage />} />
-          <Route path="/inventory/:id" element={<InventoryDetail />} />
           <Route path="/inventory/new" element={<InventoryForm />} />
+          <Route path="/inventory/:id" element={<InventoryDetail />} />
           <Route path="/inventory/:id/edit" element={<InventoryForm />} />
-          <Route path="/checklist/templates" element={<div>Template Checklist (Placeholder)</div>} />
+          <Route path="/checklist/templates" element={<ChecklistMasterPage />} />
+          <Route path="/checklist/templates/new" element={<TemplateForm />} />
+          <Route path="/checklist/templates/:id/edit" element={<TemplateForm />} />
           <Route path="/checklist/sessions" element={<SessionsPage />} />
-          <Route path="/q/:publicId" element={<PublicQrPage />} />
           <Route path="/qr" element={<QrCenterPage />} />
           <Route path="/q/:publicId" element={<PublicQrPage />} />
           <Route path="/compliance" element={<CompliancePage />} />

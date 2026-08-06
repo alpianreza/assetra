@@ -4,8 +4,17 @@ export async function fetchTemplates(): Promise<any> {
   return apiRequest<any>('/checklist-templates');
 }
 
+/** Checklist Master view: templates grouped by Jenis Item. */
+export async function fetchGroupedTemplates(): Promise<any> {
+  return apiRequest<any>('/checklist-templates/grouped');
+}
+
 export async function fetchTemplate(id: number): Promise<any> {
   return apiRequest<any>(`/checklist-templates/${id}`);
+}
+
+export async function provisionTemplates(): Promise<any> {
+  return apiRequest<any>('/checklist-templates/provision', { method: 'POST', body: {} });
 }
 
 export async function createTemplate(data: any): Promise<any> {
