@@ -5,6 +5,18 @@ import { BrandingService } from '../branding/branding.service';
 import { CompliancePeriodEngine, ComplianceFrequency } from '../compliance/period-engine.service';
 import { ComplianceService } from '../compliance/compliance.service';
 
+/**
+ * Module-level so it can be referenced from type positions. `typeof this.X`
+ * is not valid inside the arrow functions below.
+ */
+const STATUS_LABELS = {
+  ok: '✓',
+  not_ok: '✗',
+  na: '–',
+} as const;
+
+type AnswerStatus = keyof typeof STATUS_LABELS;
+
 @Injectable()
 export class ComplianceReportService {
   constructor(
@@ -14,12 +26,6 @@ export class ComplianceReportService {
     private readonly periodEngine: CompliancePeriodEngine,
     private readonly complianceService: ComplianceService,
   ) {}
-
-  private readonly STATUS_LABELS = {
-    ok: '✓',
-    not_ok: '✗',
-    na: '–',
-  } as const;
 
   async getReportData(
     inventoryId: number,
@@ -131,7 +137,6 @@ export class ComplianceReportService {
       placeholder: q.placeholder,
       helpText: q.helpText,
       isRequired: q.isRequired,
-      requirePhoto: q.requirePhoto,
       sortOrder: q.sortOrder,
       // allowNA comes from ItemType, not Question (Gate 10 correction)
       allowNA: template.itemType.allowNA,
@@ -139,11 +144,12 @@ export class ComplianceReportService {
 
     const answers = questions.map(q => {
       const log = latestAnswers.get(q.id);
+      const status: AnswerStatus | null = log?.status ?? null;
       return {
         questionId: q.id,
         questionText: q.questionText,
-        status: log?.status || null,
-        statusLabel: log?.status ? this.STATUS_LABELS[log.status as keyof typeof this.STATUS_LABELS] ?? null : null,
+        status,
+        statusLabel: status ? STATUS_LABELS[status] ?? null : null,
         remark: log?.remark ?? null,
         photo: log?.photo ?? null,
         evidence: log?.evidence ?? [],
