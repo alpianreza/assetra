@@ -24,9 +24,11 @@ export class AssetItemTypesService {
       id: type.id,
       name: type.name,
       code: type.code,
+      categoryId: type.categoryId,
       categoryName: type.category.name,
       checklistFrequency: type.checklistFrequency,
       active: type.active,
+      allowNA: type.allowNA,
       inventoryCount: type.inventories.length,
     }));
   }
@@ -45,6 +47,7 @@ export class AssetItemTypesService {
       code: type.code,
       checklistFrequency: type.checklistFrequency,
       active: type.active,
+      allowNA: type.allowNA,
       inventoryCount: type.inventories.length,
     };
   }
@@ -59,6 +62,8 @@ export class AssetItemTypesService {
         name: dto.name,
         code: dto.code,
         checklistFrequency: dto.checklistFrequency,
+        allowNA: dto.allowNA ?? false,
+        active: dto.active ?? true,
       },
     });
 
@@ -83,6 +88,7 @@ export class AssetItemTypesService {
         code: dto.code ?? type.code,
         checklistFrequency: dto.checklistFrequency ?? type.checklistFrequency,
         active: dto.active !== undefined ? dto.active : type.active,
+        allowNA: dto.allowNA !== undefined ? dto.allowNA : type.allowNA,
       },
     });
 

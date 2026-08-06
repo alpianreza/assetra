@@ -26,6 +26,10 @@ export class CreateAssetItemTypeDto {
   @IsBoolean()
   @IsOptional()
   allowNA?: boolean = false;
+
+  @IsBoolean()
+  @IsOptional()
+  active?: boolean = true;
 }
 
 export class UpdateAssetItemTypeDto {
