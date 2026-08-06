@@ -1,6 +1,6 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
 import {
-  fetchInventory, fetchInventoryById, createInventory, updateInventory, updateInventoryStatus, deleteInventory
+  fetchInventory, fetchInventoryById, fetchNextAssetCode, createInventory, updateInventory, updateInventoryStatus, deleteInventory
 } from './api';
 import { queryClient } from '@/app/queryClient';
 import { QueryInventoryDto } from './types';
@@ -19,6 +19,16 @@ export function useInventoryDetail(id?: number) {
     queryKey: ['inventory', id],
     queryFn: () => fetchInventoryById(id!),
     enabled: !!id,
+  });
+}
+
+/** Read-only preview of the next auto-generated nomor inventaris. */
+export function useNextAssetCode(itemTypeId?: number) {
+  return useQuery({
+    queryKey: ['inventory', 'preview-asset-code', itemTypeId],
+    queryFn: () => fetchNextAssetCode(itemTypeId!),
+    enabled: !!itemTypeId && itemTypeId > 0,
+    staleTime: 0,
   });
 }
 
