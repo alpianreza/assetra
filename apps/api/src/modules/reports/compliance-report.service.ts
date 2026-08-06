@@ -64,12 +64,17 @@ export class ComplianceReportService {
 
     const frequency = template.itemType.checklistFrequency as ComplianceFrequency;
 
-    // Validate period (future check)
-    const periodStart = this.periodEngine.periodStart(frequency, periodKey, inventory.createdAt);
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    if (!this.periodEngine.isFrequency(frequency)) {
+      throw new BadRequestException('Frekuensi checklist jenis item tidak valid');
+    }
+    if (!this.periodEngine.isValidPeriodKey(frequency, periodKey)) {
+      throw new BadRequestException('Format periode tidak sesuai dengan frekuensi checklist');
+    }
 
-    if (periodStart > today) {
+    const periodStart = this.periodEngine.periodStart(frequency, periodKey);
+    const periodEnd = this.periodEngine.periodEnd(frequency, periodKey);
+
+    if (this.periodEngine.isPeriodFuture(frequency, periodKey)) {
       throw new BadRequestException('Periode masa depan tidak dapat dilaporkan');
     }
 
@@ -126,6 +131,7 @@ export class ComplianceReportService {
       placeholder: q.placeholder,
       helpText: q.helpText,
       isRequired: q.isRequired,
+      requirePhoto: q.requirePhoto,
       sortOrder: q.sortOrder,
       // allowNA comes from ItemType, not Question (Gate 10 correction)
       allowNA: template.itemType.allowNA,
@@ -137,6 +143,7 @@ export class ComplianceReportService {
         questionId: q.id,
         questionText: q.questionText,
         status: log?.status || null,
+        statusLabel: log?.status ? this.STATUS_LABELS[log.status as keyof typeof this.STATUS_LABELS] ?? null : null,
         remark: log?.remark ?? null,
         photo: log?.photo ?? null,
         evidence: log?.evidence ?? [],
@@ -145,24 +152,21 @@ export class ComplianceReportService {
       };
     });
 
-    // Determine overall status for this occurrence
-    const isFuture = periodStart > today;
-    const offday = !await this.isWorkingDay(periodStart);
-
-    let latestStatus: any = 'Belum Diperiksa';
-    if (isFuture) latestStatus = 'future';
-    else if (offday) latestStatus = 'offday';
-    else if (existingLogs.length > 0) latestStatus = 'completed';
-    else {
-      const late = this.isPeriodLate(frequency, periodStart);
-      latestStatus = late ? 'late' : 'pending';
-    }
+    // Single source of truth for period status, shared with the compliance screens.
+    const offday = await this.periodEngine.isOffdayPeriodAsync(frequency, periodKey);
+    const latestStatus = this.periodEngine.resolveStatus({
+      frequency,
+      periodKey,
+      hasLog: existingLogs.length > 0,
+      offday,
+    });
 
     // Build findings
     const findings = {
       notOkCount: answers.filter(a => a.status === 'not_ok').length,
       naCount: answers.filter(a => a.status === 'na').length,
       okCount: answers.filter(a => a.status === 'ok').length,
+      unansweredCount: answers.filter(a => a.status === null).length,
       details: answers,
     };
 
@@ -203,7 +207,10 @@ export class ComplianceReportService {
         },
         period: {
           key: periodKey,
-          label: periodKey,
+          label: this.periodEngine.periodLabel(frequency, periodKey),
+          start: periodStart,
+          end: periodEnd,
+          offday,
         },
         session: session ? {
           id: session.id,
@@ -223,27 +230,20 @@ export class ComplianceReportService {
       answers,
       findings,
       statusSummary: {
-        completed: 0,
-        pending: 0,
-        late: 0,
-        offday: 0,
-        future: 0,
+        completed: latestStatus === 'done' ? 1 : 0,
+        pending: latestStatus === 'pending' ? 1 : 0,
+        late: latestStatus === 'late' ? 1 : 0,
+        offday: latestStatus === 'offday' ? 1 : 0,
+        future: latestStatus === 'future' ? 1 : 0,
       },
     };
   }
 
+  /**
+   * Delegates to the period engine so holiday overrides and the weekly working
+   * day configuration are resolved the same way everywhere.
+   */
   async isWorkingDay(date: Date): Promise<boolean> {
-    const override = await this.prisma.holidayOverride.findUnique({ where: { date } });
-    if (override) return override.status === 'WORKING';
-    const dayOfWeek = date.getDay();
-    const config = await this.prisma.workingDayConfiguration.findUnique({ where: { dayOfWeek } });
-    return config?.status === 'WORKING';
-  }
-
-  private isPeriodLate(frequency: ComplianceFrequency, periodStart: Date, now: Date = new Date()): boolean {
-    const thresholds = { daily: 21, weekly: 28, monthly: 90 };
-    const threshold = thresholds[frequency];
-    const elapsedDays = Math.floor((now.getTime() - periodStart.getTime()) / (24 * 60 * 60 * 1000));
-    return elapsedDays > threshold;
+    return this.periodEngine.isWorkingDay(date);
   }
 }
