@@ -4,6 +4,7 @@
 
 @layer base {
   :root {
+    color-scheme: light;
     --background: 0 0% 100%;
     --foreground: 222.2 84% 4.9%;
     --card: 0 0% 100%;
@@ -24,8 +25,6 @@
     --input: 214.3 31.8% 91.4%;
     --ring: 221.2 83.2% 53.3%;
     --radius: 0.5rem;
-
-    /* Sidebar (dark, TailwindAdmin style) */
     --sidebar: 222.2 47% 7%;
     --sidebar-foreground: 210 40% 92%;
     --sidebar-muted: 215 16% 55%;
@@ -35,6 +34,7 @@
   }
 
   .dark {
+    color-scheme: dark;
     --background: 222.2 84% 4.9%;
     --foreground: 210 40% 98%;
     --card: 222.2 84% 7.5%;
@@ -54,7 +54,6 @@
     --border: 217.2 32.6% 15%;
     --input: 217.2 32.6% 17.5%;
     --ring: 224.3 76.3% 48%;
-
     --sidebar: 222.2 47% 5%;
     --sidebar-foreground: 210 40% 92%;
     --sidebar-muted: 215 16% 50%;
@@ -63,7 +62,6 @@
     --sidebar-border: 222.2 47% 10%;
   }
 
-  /* Accent presets (applied via [data-accent] on <html>) */
   [data-accent='blue'] {
     --primary: 221.2 83.2% 53.3%;
     --primary-foreground: 210 40% 98%;
@@ -99,8 +97,39 @@
     @apply border-border;
   }
 
+  html {
+    min-height: 100%;
+    background: hsl(var(--background));
+  }
+
   body {
-    @apply bg-background text-foreground antialiased;
+    @apply min-h-screen bg-background text-foreground antialiased;
+  }
+
+  input,
+  textarea,
+  select {
+    @apply border-input bg-background text-foreground;
+    caret-color: hsl(var(--foreground));
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: hsl(var(--muted-foreground));
+    opacity: 1;
+  }
+
+  input:disabled,
+  input[readonly],
+  textarea:disabled,
+  select:disabled {
+    @apply bg-muted/60 text-muted-foreground;
+  }
+
+  option,
+  optgroup {
+    background-color: hsl(var(--popover));
+    color: hsl(var(--popover-foreground));
   }
 }
 
@@ -116,4 +145,31 @@
     border-radius: 9999px;
     background-color: hsl(var(--muted-foreground) / 0.3);
   }
+
+  /* Older pages still use bg-white directly. Keep their form fields readable
+     in dark mode until every page has moved to semantic theme tokens. */
+  .dark input.bg-white,
+  .dark textarea.bg-white,
+  .dark select.bg-white {
+    background-color: hsl(var(--background)) !important;
+    color: hsl(var(--foreground)) !important;
+  }
+
+  .dark .bg-white:not(img) {
+    background-color: hsl(var(--card)) !important;
+  }
+}
+
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus {
+  -webkit-text-fill-color: hsl(var(--foreground));
+  caret-color: hsl(var(--foreground));
+  box-shadow: 0 0 0 1000px hsl(var(--background)) inset;
+  transition: background-color 9999s ease-out 0s;
+}
+
+::selection {
+  background-color: hsl(var(--primary) / 0.28);
+  color: hsl(var(--foreground));
 }

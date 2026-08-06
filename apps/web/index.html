@@ -1,10 +1,28 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="id">
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
     <title>Assetra — Asset & Compliance Management</title>
+    <script>
+      (function () {
+        try {
+          var mode = localStorage.getItem('assetra-theme') || 'system';
+          var accent = localStorage.getItem('assetra-accent') || 'blue';
+          var dark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
+          var resolved = dark ? 'dark' : 'light';
+          var root = document.documentElement;
+          root.classList.add(resolved);
+          root.dataset.theme = resolved;
+          root.dataset.accent = accent;
+          root.style.colorScheme = resolved;
+        } catch (_) {
+          document.documentElement.classList.add('light');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>
