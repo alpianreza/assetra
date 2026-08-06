@@ -1,6 +1,7 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient } from '@/app/queryClient';
 import {
+  ChecklistAnswerInput,
   fetchComplianceOverview,
   fetchCompliancePeriods,
   fetchComplianceChecklist,
@@ -28,12 +29,13 @@ export function useComplianceChecklist(inventoryId?: number, templateId?: number
     queryKey: ['compliance', 'checklist', inventoryId, templateId, periodKey, sessionId],
     queryFn: () => fetchComplianceChecklist(inventoryId!, templateId!, periodKey!, sessionId),
     enabled: !!inventoryId && !!templateId && !!periodKey,
+    retry: false,
   });
 }
 
 export function useSubmitComplianceChecklist(inventoryId: number, templateId: number, periodKey: string, sessionId: number | null) {
   return useMutation({
-    mutationFn: (answers: { questionId: number; status: string }[]) =>
+    mutationFn: (answers: ChecklistAnswerInput[]) =>
       submitComplianceChecklist(inventoryId, templateId, periodKey, sessionId, answers),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: COMPLIANCE_QUERY_KEY });
