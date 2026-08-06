@@ -1,30 +1,30 @@
 import { Controller, Get, Post, Body, Param, Query, ParseIntPipe, UseGuards } from '@nestjs/common';
 import { ComplianceService } from './compliance.service';
+import { ComplianceResultsService } from './compliance-results.service';
 import { SubmitChecklistDto } from './compliance.dto';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
-import { RequirePermissions } from '../auth/decorators/permissions.decorator';
+import { RequireAnyPermissions, RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { SanitizedUserDto } from '../auth/dto/user-response.dto';
 
 @Controller('compliance')
 @UseGuards(SessionAuthGuard, PermissionsGuard)
 export class ComplianceController {
-  constructor(private readonly complianceService: ComplianceService) {}
+  constructor(
+    private readonly complianceService: ComplianceService,
+    private readonly resultsService: ComplianceResultsService,
+  ) {}
 
   @Get()
-  @RequirePermissions('compliance.view')
+  @RequireAnyPermissions('compliance.view', 'compliance.execute')
   async overview() {
     const data = await this.complianceService.overview();
     return { success: true, data };
   }
 
-  /**
-   * Checklist calendar for one month. `ym` is YYYY-MM and defaults to the
-   * current month.
-   */
   @Get('inventory/:inventoryId/periods')
-  @RequirePermissions('compliance.view')
+  @RequireAnyPermissions('compliance.view', 'compliance.execute')
   async periods(
     @Param('inventoryId', ParseIntPipe) inventoryId: number,
     @Query('ym') ym?: string,
@@ -33,8 +33,9 @@ export class ComplianceController {
     return { success: true, data };
   }
 
+  /** Only executors may load the editable form, not read-only auditors. */
   @Get('inventory/:inventoryId/checklist')
-  @RequirePermissions('compliance.view')
+  @RequirePermissions('compliance.execute')
   async buildExecution(
     @Param('inventoryId', ParseIntPipe) inventoryId: number,
     @Query('templateId', ParseIntPipe) templateId: number,
@@ -66,6 +67,16 @@ export class ComplianceController {
       dto.answers,
       user.id,
     );
+    return { success: true, data };
+  }
+
+  @Get('inventory/:inventoryId/history/:occurrenceId')
+  @RequirePermissions('compliance.view')
+  async result(
+    @Param('inventoryId', ParseIntPipe) inventoryId: number,
+    @Param('occurrenceId', ParseIntPipe) occurrenceId: number,
+  ) {
+    const data = await this.resultsService.getResult(inventoryId, occurrenceId);
     return { success: true, data };
   }
 

@@ -2,7 +2,7 @@ import { Controller, Get, Post, Body, Param, ParseIntPipe, UseGuards, Res } from
 import { Response } from 'express';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
-import { RequirePermissions } from '../auth/decorators/permissions.decorator';
+import { RequireAnyPermissions, RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { SanitizedUserDto } from '../auth/dto/user-response.dto';
 import { QrService } from './qr.service';
@@ -60,11 +60,17 @@ export class QrController {
   }
 }
 
+/**
+ * Kept at the existing URL for printed QR compatibility, but it is no longer
+ * anonymous: scanning must enter the authenticated, role-aware inventory flow.
+ */
 @Controller('public')
+@UseGuards(SessionAuthGuard, PermissionsGuard)
 export class PublicController {
   constructor(private readonly qrService: QrService) {}
 
   @Get('inventory/:publicId')
+  @RequireAnyPermissions('inventory.view', 'compliance.view', 'compliance.execute')
   async getPublicInventory(@Param('publicId') publicId: string) {
     const data = await this.qrService.getPublicInventory(publicId);
     return { success: true, data };

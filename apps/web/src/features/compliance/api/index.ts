@@ -4,8 +4,9 @@ export async function fetchComplianceOverview(): Promise<any> {
   return apiRequest<any>('/compliance');
 }
 
-export async function fetchCompliancePeriods(inventoryId: number): Promise<any> {
-  return apiRequest<any>(`/compliance/inventory/${inventoryId}/periods`);
+export async function fetchCompliancePeriods(inventoryId: number, ym?: string): Promise<any> {
+  const query = ym ? `?ym=${encodeURIComponent(ym)}` : '';
+  return apiRequest<any>(`/compliance/inventory/${inventoryId}/periods${query}`);
 }
 
 export async function fetchComplianceChecklist(inventoryId: number, templateId: number, periodKey: string, sessionId?: number | null): Promise<any> {
@@ -29,4 +30,8 @@ export async function submitComplianceChecklist(
 
 export async function fetchComplianceHistory(inventoryId: number): Promise<any> {
   return apiRequest<any>(`/compliance/inventory/${inventoryId}/history`);
+}
+
+export async function fetchComplianceResult(inventoryId: number, occurrenceId: number): Promise<any> {
+  return apiRequest<any>(`/compliance/inventory/${inventoryId}/history/${occurrenceId}`);
 }

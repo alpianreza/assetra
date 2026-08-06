@@ -1,7 +1,7 @@
 import { Controller, Get, Post, Patch, Delete, Body, Param, Query, ParseIntPipe, UseGuards } from '@nestjs/common';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
-import { RequirePermissions } from '../auth/decorators/permissions.decorator';
+import { RequireAnyPermissions, RequirePermissions } from '../auth/decorators/permissions.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { SanitizedUserDto } from '../auth/dto/user-response.dto';
 import { InventoryService } from './inventory.service';
@@ -25,10 +25,6 @@ export class InventoryController {
     return { success: true, data };
   }
 
-  /**
-   * Preview the auto-generated nomor inventaris for a jenis item.
-   * Declared before `:id` so the literal path is not parsed as an id.
-   */
   @Get('preview-asset-code')
   @RequirePermissions('inventory.create')
   async previewAssetCode(@Query() query: PreviewAssetCodeDto) {
@@ -36,8 +32,13 @@ export class InventoryController {
     return { success: true, data };
   }
 
+  /**
+   * Inventory detail is also the landing page after a QR scan. Admin, PIC, and
+   * auditors need the basic asset information even when they cannot list all
+   * inventories.
+   */
   @Get(':id')
-  @RequirePermissions('inventory.view')
+  @RequireAnyPermissions('inventory.view', 'compliance.view', 'compliance.execute')
   async getById(@Param('id', ParseIntPipe) id: number) {
     const data = await this.inventoryService.getById(id);
     return { success: true, data };

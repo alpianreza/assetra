@@ -1,7 +1,12 @@
 import { useQuery, useMutation } from '@tanstack/react-query';
 import { queryClient } from '@/app/queryClient';
 import {
-  fetchComplianceOverview, fetchCompliancePeriods, fetchComplianceChecklist, submitComplianceChecklist, fetchComplianceHistory,
+  fetchComplianceOverview,
+  fetchCompliancePeriods,
+  fetchComplianceChecklist,
+  submitComplianceChecklist,
+  fetchComplianceHistory,
+  fetchComplianceResult,
 } from '../api';
 
 export const COMPLIANCE_QUERY_KEY = ['compliance'] as const;
@@ -10,10 +15,10 @@ export function useComplianceOverview() {
   return useQuery({ queryKey: COMPLIANCE_QUERY_KEY, queryFn: fetchComplianceOverview });
 }
 
-export function useCompliancePeriods(inventoryId?: number) {
+export function useCompliancePeriods(inventoryId?: number, ym?: string) {
   return useQuery({
-    queryKey: ['compliance', 'periods', inventoryId],
-    queryFn: () => fetchCompliancePeriods(inventoryId!),
+    queryKey: ['compliance', 'periods', inventoryId, ym],
+    queryFn: () => fetchCompliancePeriods(inventoryId!, ym),
     enabled: !!inventoryId,
   });
 }
@@ -43,5 +48,13 @@ export function useComplianceHistory(inventoryId?: number) {
     queryKey: ['compliance', 'history', inventoryId],
     queryFn: () => fetchComplianceHistory(inventoryId!),
     enabled: !!inventoryId,
+  });
+}
+
+export function useComplianceResult(inventoryId?: number, occurrenceId?: number) {
+  return useQuery({
+    queryKey: ['compliance', 'result', inventoryId, occurrenceId],
+    queryFn: () => fetchComplianceResult(inventoryId!, occurrenceId!),
+    enabled: !!inventoryId && !!occurrenceId,
   });
 }
