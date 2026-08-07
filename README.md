@@ -1,77 +1,55 @@
 # Assetra
 
-Assetra adalah aplikasi manajemen inventaris dan compliance checklist berbasis QR. Aplikasi mencakup inventaris, PIC, periode pemeriksaan, checklist, evidence, monitoring progres, notifikasi, QR Center, dan laporan.
+Assetra adalah aplikasi manajemen inventaris dan compliance checklist berbasis QR dengan frontend React, backend NestJS, Prisma, MySQL, session cookie, CSRF, dan RBAC.
 
 ## Arsitektur
 
-Assetra tetap menggunakan arsitektur berikut:
-
-- **Frontend:** React, TypeScript, Vite, Tailwind CSS, shadcn/ui, React Router, TanStack Query.
-- **Backend:** NestJS, TypeScript, Prisma, MySQL, REST API.
-- **Authentication:** session cookie, CSRF, dan RBAC.
-
 ### Development
-
-Development menjalankan dua dev server agar HMR tetap tersedia:
 
 ```text
 Browser → Vite :5173 → /api proxy → NestJS :3000
 ```
 
-### Production — Single Server
+Development tetap memakai dua dev server agar HMR berfungsi.
 
-Production hanya menjalankan **satu process NestJS**:
+### Production — Single Server
 
 ```text
 Browser
    │
    ▼
 NestJS :PORT
-   ├── /api/v1/*  → REST API
+   ├── /api/v1/*   → REST API
    ├── file routes → controller/authorization existing
-   └── /*          → React build + SPA fallback
+   └── /*           → React production build + SPA fallback
 ```
 
 `pnpm build` menghasilkan:
 
 ```text
-apps/web/dist/       # React production build
-apps/api/dist/       # NestJS production build
+apps/web/dist/
+apps/api/dist/
 ```
 
-`pnpm start:prod` hanya menjalankan NestJS. Vite tidak dijalankan di production.
+`pnpm start:prod` hanya menjalankan satu process NestJS. Vite tidak dijalankan di production.
 
 ## Fitur Utama
 
 - Login dengan session cookie dan CSRF.
-- Home dan Dashboard analitik.
-- Monitoring progres berdasarkan PIC.
-- Master Data: area, kategori, jenis item, dan Checklist Master.
-- Inventaris dengan nomor otomatis, foto, status, PIC, dan QR.
-- Checklist berdasarkan periode, frekuensi, hari kerja, dan hari libur.
-- Evidence foto dan Evidence Center.
-- Riwayat hasil checklist read-only untuk auditor.
-- Role dan permission.
-- Pengguna dan foto profil.
-- QR Center, regenerasi QR, Print Center, serta export.
+- Home, Dashboard, dan Monitoring Progress PIC.
+- Master Data, Inventaris, Checklist Master, periode, hari kerja/libur.
+- QR Center dan public QR page.
+- Evidence Center dan hasil checklist read-only.
+- Role, permission, pengguna, dan foto pengguna.
 - Notifikasi in-app untuk checklist pending/terlambat.
-- Pengaturan organisasi, tema, dan bahasa Indonesia/English.
+- Print Center, export, organisasi, tema, dan bilingual.
 
 ## Persyaratan
 
-- Git.
 - Node.js minimal `20.10.0`.
 - pnpm `9.x`.
-- MySQL 8.x atau MariaDB yang kompatibel dengan Prisma MySQL.
-- Hak baca/tulis untuk `apps/api/storage`.
-
-```bash
-node --version
-pnpm --version
-mysql --version
-```
-
-Jika pnpm belum tersedia:
+- MySQL 8.x atau MariaDB kompatibel Prisma MySQL.
+- Git dan akses tulis ke `apps/api/storage`.
 
 ```bash
 corepack enable
@@ -80,9 +58,9 @@ corepack prepare pnpm@9.0.0 --activate
 
 ## Environment
 
-Salin contoh environment ke root repository:
+Salin `.env.example` ke `.env` di root repository.
 
-Windows PowerShell:
+Windows:
 
 ```powershell
 Copy-Item .env.example .env
@@ -94,36 +72,21 @@ Linux/macOS:
 cp .env.example .env
 ```
 
-Contoh development:
+### Development
 
 ```env
 NODE_ENV=development
 PORT=3000
 API_PORT=3000
-APP_NAME=Assetra
-APP_VERSION=0.0.1
 APP_URL=http://localhost:5173
 FRONTEND_URL=http://localhost:5173
 CORS_ORIGIN=http://localhost:5173
-SESSION_SECRET=replace-with-a-long-random-development-secret
+COOKIE_SECURE=false
+SESSION_SECRET=ganti-dengan-random-string-panjang
 DATABASE_URL=mysql://root:@localhost:3306/assetra_dev
 ```
 
-Contoh production single-server melalui IP LAN:
-
-```env
-NODE_ENV=production
-PORT=3000
-APP_NAME=Assetra
-APP_VERSION=1.0.0
-APP_URL=http://192.168.1.20:3000
-FRONTEND_URL=http://192.168.1.20:3000
-CORS_ORIGIN=
-SESSION_SECRET=ganti-dengan-random-string-panjang-dan-rahasia
-DATABASE_URL=mysql://assetra_user:password-kuat@127.0.0.1:3306/assetra
-```
-
-Contoh production dengan domain HTTPS:
+### Production single-server dengan HTTPS
 
 ```env
 NODE_ENV=production
@@ -131,30 +94,41 @@ PORT=3000
 APP_URL=https://assetra.perusahaan.com
 FRONTEND_URL=https://assetra.perusahaan.com
 CORS_ORIGIN=
+COOKIE_SECURE=true
 SESSION_SECRET=ganti-dengan-random-string-panjang-dan-rahasia
 DATABASE_URL=mysql://assetra_user:password-kuat@127.0.0.1:3306/assetra
 ```
 
-### Keterangan Environment
+### Production single-server pada HTTP LAN terpercaya
+
+```env
+NODE_ENV=production
+PORT=3000
+APP_URL=http://192.168.1.20:3000
+FRONTEND_URL=http://192.168.1.20:3000
+CORS_ORIGIN=
+COOKIE_SECURE=false
+SESSION_SECRET=ganti-dengan-random-string-panjang-dan-rahasia
+DATABASE_URL=mysql://assetra_user:password-kuat@127.0.0.1:3306/assetra
+```
+
+`COOKIE_SECURE=false` hanya untuk LAN terpercaya tanpa TLS. Deployment internet/domain harus memakai HTTPS dan `COOKIE_SECURE=true`.
 
 | Variabel | Keterangan |
 | --- | --- |
-| `NODE_ENV` | `development` atau `production`. Production mengaktifkan secure cookie. |
-| `PORT` | Port single server NestJS. Prioritas utama. |
-| `API_PORT` | Alias kompatibilitas instalasi lama; digunakan jika `PORT` tidak diisi. |
+| `NODE_ENV` | `development` atau `production`; static React hanya dilayani pada production. |
+| `PORT` | Port single server NestJS; prioritas utama. |
+| `API_PORT` | Alias kompatibilitas, dipakai jika `PORT` kosong. |
 | `APP_URL` | URL publik Assetra dan base URL QR. |
-| `FRONTEND_URL` | Alias kompatibilitas untuk instalasi lama. |
-| `CORS_ORIGIN` | Origin lintas domain yang diizinkan, dapat dipisahkan koma. Kosongkan untuk same-origin production. |
+| `FRONTEND_URL` | Alias kompatibilitas instalasi lama. |
+| `CORS_ORIGIN` | Allowlist origin lintas domain; kosongkan untuk same-origin production. |
+| `COOKIE_SECURE` | `true` untuk HTTPS; `false` hanya untuk HTTP LAN terpercaya. |
+| `SESSION_SECRET` | Secret deployment; jangan dikomit. Auth existing tetap opaque database-backed session, bukan JWT localStorage. |
 | `DATABASE_URL` | Connection string MySQL Prisma. |
-| `SESSION_SECRET` | Secret deployment yang harus unik dan tidak dikomit. Auth existing tetap memakai opaque session token yang disimpan di database, bukan JWT localStorage. |
 
-Root `.env` dimuat secara portable dari monorepo. Source code tidak memiliki hardcoded path Windows.
-
-> Jangan menambahkan `/api/v1` ke `APP_URL`. Gunakan origin, misalnya `https://assetra.perusahaan.com`.
+Jangan menambahkan `/api/v1` ke `APP_URL`. Root `.env` dimuat secara portable; tidak ada hardcoded path Windows.
 
 ## Fresh Installation — Development
-
-### 1. Clone dan install
 
 ```bash
 git clone https://github.com/alpianreza/assetra.git
@@ -163,19 +137,13 @@ git checkout master
 pnpm install
 ```
 
-### 2. Buat database
+Buat database:
 
 ```sql
-CREATE DATABASE assetra_dev
-  CHARACTER SET utf8mb4
-  COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE assetra_dev CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 ```
 
-### 3. Siapkan `.env`
-
-Salin `.env.example`, lalu sesuaikan `DATABASE_URL`, `PORT`, dan URL development.
-
-### 4. Migration, Prisma, dan seed
+Salin `.env.example`, sesuaikan `DATABASE_URL`, lalu:
 
 ```bash
 pnpm db:migrate
@@ -183,33 +151,24 @@ pnpm db:generate
 pnpm seed:permissions
 pnpm seed:checklist
 pnpm admin:create
-```
-
-`admin:create` meminta nama, username, email, telepon opsional, dan password.
-
-### 5. Jalankan development
-
-```bash
 pnpm dev
 ```
 
-Perintah tersebut menjalankan Vite dan NestJS secara paralel:
+Akses:
 
-- Frontend: `http://localhost:5173`
-- API: `http://localhost:3000/api/v1`
+- Frontend Vite: `http://localhost:5173`
+- API NestJS: `http://localhost:3000/api/v1`
 
-Untuk menjalankan secara terpisah:
+Menjalankan terpisah tetap didukung:
 
 ```bash
 pnpm --filter @assetra/api dev
 pnpm --filter @assetra/web dev
 ```
 
-Vite proxy tetap meneruskan `/api` ke NestJS. Frontend memakai API relatif `/api/v1`, bukan URL `localhost:3000` yang ditanam ke production bundle.
+Frontend memakai API relatif `/api/v1`; Vite proxy meneruskannya ke NestJS saat development.
 
 ## Fresh Installation — Production Single Server
-
-### 1. Clone dan install
 
 ```bash
 git clone https://github.com/alpianreza/assetra.git
@@ -218,18 +177,7 @@ git checkout master
 pnpm install --frozen-lockfile
 ```
 
-### 2. Siapkan MySQL dan `.env`
-
-- Buat database MySQL.
-- Salin `.env.example` menjadi `.env`.
-- Set `NODE_ENV=production`.
-- Set `PORT`.
-- Set `APP_URL` ke URL/IP yang dipakai operator.
-- Kosongkan `CORS_ORIGIN` untuk same-origin.
-- Set `DATABASE_URL`.
-- Ganti `SESSION_SECRET` dengan nilai panjang dan acak.
-
-### 3. Generate, migration, dan initial seed
+Siapkan MySQL dan `.env` production, kemudian:
 
 ```bash
 pnpm db:generate
@@ -237,43 +185,19 @@ pnpm db:migrate-deploy
 pnpm seed:permissions
 pnpm seed:checklist
 pnpm admin:create
-```
-
-`admin:create` hanya diperlukan saat membuat administrator pertama.
-
-### 4. Build frontend dan backend
-
-```bash
 pnpm build
-```
-
-Build harus menghasilkan `apps/web/dist/index.html`. Production start akan berhenti dengan pesan yang jelas jika build React belum tersedia.
-
-### 5. Jalankan satu production process
-
-```bash
 pnpm start:prod
 ```
 
-Buka:
+`admin:create` hanya diperlukan untuk administrator pertama.
+
+Akses:
 
 ```text
 http://SERVER_IP:PORT
 ```
 
-Contoh:
-
-```text
-http://192.168.1.20:3000
-```
-
-Pada production, React sudah berupa static assets dan dilayani oleh NestJS. Tidak perlu menjalankan:
-
-```text
-pnpm --filter @assetra/web dev
-vite preview
-frontend server kedua
-```
+atau domain HTTPS yang diatur dalam `APP_URL`.
 
 Command final production:
 
@@ -282,92 +206,57 @@ pnpm build
 pnpm start:prod
 ```
 
+Tidak perlu menjalankan Vite, `vite preview`, frontend server kedua, atau terminal kedua.
+
 ## Cara NestJS Melayani React
 
-Single-server diaktifkan hanya saat:
+Saat `NODE_ENV=production`:
 
-```env
-NODE_ENV=production
-```
+1. NestJS me-resolve `apps/web/dist` secara portable terhadap struktur monorepo.
+2. Adapter resmi NestJS Express melayani file hasil build Vite.
+3. API tetap memiliki global prefix `/api/v1`.
+4. Seluruh controller NestJS didaftarkan sebelum SPA fallback.
+5. Route React Router tanpa ekstensi menerima `apps/web/dist/index.html`.
+6. Start gagal dengan pesan jelas jika `apps/web/dist/index.html` belum dibuat.
 
-NestJS melakukan:
-
-1. Resolve build frontend secara portable dari struktur monorepo ke `apps/web/dist`.
-2. Melayani file static hasil Vite menggunakan adapter resmi NestJS Express.
-3. Mempertahankan global API prefix `/api/v1`.
-4. Mendaftarkan SPA fallback setelah seluruh controller NestJS selesai diinisialisasi.
-5. Mengirim `index.html` untuk route React Router yang tidak memiliki ekstensi file.
-
-Tidak ada absolute path seperti `C:\xampp\htdocs\assetra` di source code.
+Tidak ada path absolut seperti `C:\xampp\htdocs\assetra` di source code.
 
 ## API dan SPA Fallback
 
-API tetap berada di:
+Contoh routing:
 
 ```text
-/api/v1/*
+GET /inventory          → React index.html
+GET /dashboard          → React index.html
+GET /q/:publicId        → React index.html
+GET /print-center       → React index.html
+GET /api/v1/inventory   → NestJS REST API
+GET /api/v1/auth/me     → NestJS Auth API
 ```
 
-Contoh:
+Refresh/direct access didukung untuk `/`, `/login`, `/dashboard`, `/inventory`, `/inventory/:id`, `/compliance`, `/qr`, `/q/:publicId`, `/reports`, `/print-center`, `/master/areas`, `/master/categories`, `/master/item-types`, dan `/settings/organization`.
 
-```text
-/api/v1/auth/login
-/api/v1/auth/me
-/api/v1/inventory
-/api/v1/compliance
-/api/v1/reports
-/api/v1/dashboard
-```
-
-SPA fallback melayani direct access dan refresh untuk route seperti:
-
-```text
-/
-/login
-/dashboard
-/inventory
-/inventory/:id
-/compliance
-/qr
-/q/:publicId
-/reports
-/print-center
-/master/areas
-/master/categories
-/master/item-types
-/settings/organization
-```
-
-Fallback tidak menangkap:
+SPA fallback tidak menangkap:
 
 - `/api` dan `/api/*`.
 - `/storage` dan `/storage/*`.
-- Request file yang memiliki ekstensi, misalnya `.js`, `.css`, `.svg`, atau `.png`.
-
-Dengan demikian:
-
-```text
-GET /inventory          → apps/web/dist/index.html
-GET /api/v1/inventory   → NestJS InventoryController
-```
+- File berekstensi seperti `.js`, `.css`, `.svg`, dan `.png`.
 
 ## Authentication Same-Origin
 
-Authentication tidak diubah:
+Authentication tidak didesain ulang:
 
 - Session cookie `assetra_session` tetap httpOnly.
-- CSRF cookie dan header `X-CSRF-Token` tetap digunakan.
-- Login, `/api/v1/auth/me`, logout, dan RBAC tetap memakai implementasi existing.
+- CSRF cookie dan `X-CSRF-Token` tetap digunakan.
+- Login, `/api/v1/auth/me`, logout, session, dan RBAC tetap existing.
 - Tidak ada JWT di localStorage.
-- Tidak ada hardcoded user atau Super Admin.
+- Tidak ada bypass CSRF atau hardcoded user/Super Admin.
 
-Karena frontend dan API berada pada origin yang sama di production, browser mengirim cookie dan CSRF request tanpa konfigurasi cross-origin tambahan.
+Production frontend memanggil `/api/v1` pada origin yang sama dengan NestJS. `COOKIE_SECURE` memungkinkan HTTPS production tetap aman dan HTTP LAN terpercaya tetap dapat melakukan login tanpa mengganti arsitektur auth.
 
-Saat `NODE_ENV=production`, cookie memakai flag `secure`; gunakan HTTPS untuk deployment internet/domain. Untuk pengujian LAN HTTP, browser tertentu dapat menolak secure cookie. Gunakan HTTPS pada deployment production sesungguhnya.
+## Storage
 
-## Storage dan File
-
-File aplikasi tetap berada di storage existing, umumnya:
+Storage existing umumnya berada di:
 
 ```text
 apps/api/storage/
@@ -378,36 +267,13 @@ apps/api/storage/
 └── organization/ atau lokasi branding existing
 ```
 
-Assetra **tidak mengekspos seluruh folder storage sebagai public static directory**. File tetap diakses melalui endpoint/controller existing agar aturan public atau authorization tetap dipertahankan, misalnya evidence, foto inventaris, foto pengguna, QR, dan logo organisasi.
+Folder storage **tidak diekspos seluruhnya sebagai public static directory**. Browser mengakses file melalui controller existing sehingga authorization evidence, foto inventaris, foto pengguna, QR, dan logo tetap dipertahankan. SPA fallback mengecualikan `/storage/*`.
 
-SPA fallback juga mengecualikan `/storage/*`; request tersebut tidak pernah berubah menjadi `index.html`.
+Pastikan process Node memiliki izin baca/tulis dan backup storage bersama database.
 
-Pastikan process Node.js memiliki izin baca/tulis:
+## Windows/XAMPP
 
-```bash
-mkdir -p apps/api/storage
-chmod -R 750 apps/api/storage
-```
-
-Storage harus ikut dibackup dan dibuat persistent. Jangan hanya membackup database.
-
-## Deployment Windows/XAMPP
-
-Contoh lokasi operator:
-
-```text
-C:\xampp\htdocs\assetra
-```
-
-Path ini hanya contoh dokumentasi dan tidak ditanam ke source code.
-
-### 1. Jalankan MySQL XAMPP
-
-Aktifkan MySQL melalui XAMPP Control Panel, lalu buat database melalui phpMyAdmin.
-
-### 2. Install dan setup
-
-PowerShell:
+Path contoh berikut hanya dokumentasi, bukan hardcoded source path:
 
 ```powershell
 cd C:\xampp\htdocs\assetra
@@ -418,47 +284,23 @@ pnpm db:migrate-deploy
 pnpm seed:permissions
 pnpm seed:checklist
 pnpm admin:create
-```
-
-### 3. Build dan start
-
-```powershell
 pnpm build
 pnpm start:prod
 ```
 
-Jika `.env` berisi:
+MySQL dapat dijalankan dari XAMPP. Jika `.env` menggunakan `PORT=3000`, buka `http://SERVER_IP:3000`. Apache XAMPP tidak diperlukan untuk menyajikan React.
 
-```env
-PORT=3000
-APP_URL=http://192.168.1.20:3000
-```
-
-maka buka:
-
-```text
-http://192.168.1.20:3000
-```
-
-Hanya satu process NestJS production yang berjalan. Apache XAMPP tidak diperlukan untuk menyajikan React.
+Untuk Windows LAN HTTP, gunakan `COOKIE_SECURE=false`. Untuk domain/internet, gunakan HTTPS dan `COOKIE_SECURE=true`.
 
 ## Reverse Proxy Opsional
 
-Nginx atau Apache **bukan requirement** untuk menjalankan frontend. Reverse proxy hanya diperlukan jika menggunakan domain, HTTPS, SSL termination, atau port 80/443.
+Nginx/Apache tidak diperlukan untuk menjalankan React. Gunakan hanya untuk domain, HTTPS, SSL termination, atau port 80/443.
 
 ```text
-Internet/LAN
-     │
-Nginx/Apache
-     │
-NestJS
-   ├── React static build
-   └── /api/v1 REST API
+Internet/LAN → Nginx/Apache → NestJS → React + API
 ```
 
-### Contoh Nginx
-
-Nginx meneruskan **seluruh request** ke satu NestJS server; Nginx tidak menjalankan React sebagai server kedua.
+Nginx meneruskan seluruh request ke satu NestJS process:
 
 ```nginx
 server {
@@ -477,87 +319,58 @@ server {
 }
 ```
 
-Untuk HTTPS, pasang sertifikat pada Nginx/Apache dan set:
+Nginx bukan server/process React kedua.
 
-```env
-APP_URL=https://assetra.perusahaan.com
-FRONTEND_URL=https://assetra.perusahaan.com
-CORS_ORIGIN=
-```
+## QR Center dan URL
 
-## QR Center dan Perubahan URL
+QR menggunakan `{APP_URL}/q/{publicId}`. Jika IP, domain, protocol, atau port berubah:
 
-QR menggunakan:
-
-```text
-{APP_URL}/q/{publicId}
-```
-
-Jika IP, domain, protocol, atau port berubah:
-
-1. Ubah `APP_URL` pada `.env`.
+1. Ubah `APP_URL`.
 2. Restart NestJS.
 3. Buka QR Center.
-4. Jalankan regenerate QR.
-5. Cetak ulang label yang masih berisi URL lama.
+4. Regenerate QR.
+5. Cetak ulang label lama.
 
-`FRONTEND_URL` tetap didukung sebagai alias kompatibilitas.
+`FRONTEND_URL` tetap didukung sebagai alias instalasi lama.
 
 ## Notifikasi
 
-### In-app
-
-Notifikasi in-app aktif tanpa provider eksternal. Pengguna yang menjadi PIC menerima pengingat checklist pending atau terlambat melalui ikon lonceng dan halaman `/notifications`.
-
-### Email/WhatsApp
+Notifikasi in-app aktif untuk PIC dan checklist pending/terlambat melalui ikon lonceng dan `/notifications`.
 
 ```text
 Email/WhatsApp provider configuration:
 Pending production provider integration.
 ```
 
-Provider saat ini masih stub/log development dan belum production-ready. Task single-server ini tidak mengimplementasikan atau mengubah provider Email/WhatsApp.
+Provider Email/WhatsApp tetap stub/log development. Task single-server tidak mengimplementasikan atau mengubah provider tersebut.
 
 ## Urutan Konfigurasi Assetra
 
-1. Pengaturan organisasi dan logo.
+1. Atur organisasi dan logo.
 2. Seed/buat role dan permission.
-3. Buat pengguna dan PIC.
-4. Atur hari kerja dan hari libur.
+3. Buat pengguna/PIC.
+4. Atur hari kerja dan libur.
 5. Buat area, kategori, dan jenis item.
-6. Buat Checklist Master per jenis item.
+6. Buat Checklist Master.
 7. Buat inventaris dan assign PIC.
 8. Pastikan `APP_URL`, lalu generate QR.
 9. Jalankan checklist.
-10. Pantau Dashboard, Monitoring Progress, Evidence Center, dan laporan.
+10. Pantau Dashboard, Progress, Evidence, dan laporan.
 
-## Backup dan Restore
-
-Backup database:
+## Backup
 
 ```bash
 mysqldump -u root -p assetra > assetra-backup.sql
-```
-
-Backup storage Linux/macOS:
-
-```bash
 tar -czf assetra-storage.tar.gz apps/api/storage
 ```
 
-Backup storage PowerShell:
+PowerShell:
 
 ```powershell
 Compress-Archive -Path .\apps\api\storage -DestinationPath .\assetra-storage.zip
 ```
 
-Restore database:
-
-```bash
-mysql -u root -p assetra < assetra-backup.sql
-```
-
-Database dan storage harus berasal dari backup yang konsisten.
+Database dan storage harus dibackup/restore sebagai satu pasangan konsisten.
 
 ## Update Production
 
@@ -567,50 +380,12 @@ pnpm install --frozen-lockfile
 pnpm db:generate
 pnpm db:migrate-deploy
 pnpm build
-# restart process Assetra
 pnpm start:prod
 ```
 
 Backup database dan storage sebelum update.
 
 ## Manual Runtime Validation
-
-Setelah build:
-
-```bash
-pnpm build
-pnpm start:prod
-```
-
-Pastikan hanya satu process NestJS production berjalan, kemudian cek:
-
-```text
-/                         → React tampil
-/login                    → React Router bekerja
-/dashboard                → refresh tidak 404
-/inventory                → refresh tidak 404
-/inventory/:id            → refresh tidak 404
-/q/:publicId              → public page bekerja
-/print-center             → React Router bekerja
-/api/v1/auth/me           → NestJS API, bukan index.html
-/api/v1/inventory         → NestJS API
-```
-
-Validasi authentication:
-
-1. Buka `/login`.
-2. Login.
-3. Pastikan request CSRF berhasil.
-4. Pastikan session cookie tersimpan.
-5. Pastikan `/api/v1/auth/me` berhasil.
-6. Buka Dashboard.
-7. Lakukan satu CRUD request sesuai permission.
-8. Logout.
-9. Pastikan browser Network tidak menghubungi port Vite `5173`.
-
-## Troubleshooting
-
-### `React production build not found`
 
 Jalankan:
 
@@ -619,30 +394,47 @@ pnpm build
 pnpm start:prod
 ```
 
-Pastikan file berikut ada:
+Pastikan hanya satu production process NestJS, kemudian periksa:
 
 ```text
-apps/web/dist/index.html
+/                       → React tampil
+/login                  → React Router bekerja
+/dashboard              → refresh tidak 404
+/inventory              → refresh tidak 404
+/q/:publicId            → public page bekerja
+/print-center           → React Router bekerja
+/api/v1/auth/me         → NestJS API
+/api/v1/inventory       → NestJS API
 ```
 
-### Refresh route menghasilkan 404
+Validasi login → CSRF → session → `/api/v1/auth/me` → Dashboard → CRUD sesuai permission → logout. Browser Network tidak boleh menghubungi Vite port `5173` pada production.
+
+## Troubleshooting
+
+### React build tidak ditemukan
+
+```bash
+pnpm build
+pnpm start:prod
+```
+
+Pastikan `apps/web/dist/index.html` tersedia.
+
+### Refresh route 404
 
 - Pastikan `NODE_ENV=production`.
-- Pastikan aplikasi dijalankan dengan `pnpm start:prod`.
+- Jalankan `pnpm start:prod`.
 - Pastikan reverse proxy meneruskan seluruh path ke NestJS.
 
-### API mengembalikan React HTML
+### Login gagal
 
-Path API harus diawali `/api/v1`. SPA fallback secara eksplisit mengecualikan `/api` dan `/api/*`.
-
-### Login gagal pada production
-
-- Pastikan `APP_URL` benar.
+- Pastikan `APP_URL` sama dengan URL browser.
 - Kosongkan `CORS_ORIGIN` untuk same-origin.
-- Gunakan HTTPS saat `NODE_ENV=production` karena cookie secure.
+- HTTPS: `COOKIE_SECURE=true`.
+- HTTP LAN terpercaya: `COOKIE_SECURE=false`.
 - Periksa cookie `assetra_session` dan `assetra_csrf`.
 
-### Prisma EPERM di Windows
+### Prisma EPERM Windows
 
 ```powershell
 Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force
@@ -652,29 +444,15 @@ pnpm db:generate
 
 ### Migration gagal
 
-- Backup database.
-- Jangan gunakan `migrate reset` pada data production.
-- Gunakan `pnpm db:migrate-deploy` di production.
+Jangan gunakan `migrate reset` pada production. Backup database dan gunakan `pnpm db:migrate-deploy`.
 
-### File/evidence tidak tampil
+### Evidence/foto tidak tampil
 
-- Periksa `apps/api/storage`.
-- Periksa permission filesystem.
-- Jalankan aplikasi dari root melalui `pnpm start:prod` agar working directory konsisten.
-- Jangan expose storage melalui web server secara bebas.
+Periksa `apps/api/storage`, permission filesystem, dan jalankan dari root dengan `pnpm start:prod`. Jangan expose storage secara bebas.
 
-## Scope Single-Server
+## Scope Perubahan
 
-Perubahan single-server tidak mengubah:
-
-- Prisma business schema.
-- Compliance Engine dan period logic.
-- Inventory, Checklist, QR, atau Report business logic.
-- Authentication, CSRF, session, dan RBAC.
-- Notification Email/WhatsApp provider.
-- UI.
-
-Tidak ada Docker, microservice, frontend production server kedua, atau test suite baru pada perubahan ini.
+Single-server tidak mengubah Prisma business schema, Compliance Engine, period logic, Inventory, Checklist, Report, RBAC, atau provider Email/WhatsApp. QR hanya mendapat alias konfigurasi deployment `APP_URL`; business logic tetap sama. Tidak ada Docker, microservice, UI redesign, atau test baru.
 
 ## Lisensi
 
