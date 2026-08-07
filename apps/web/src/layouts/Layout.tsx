@@ -12,13 +12,13 @@ import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { ThemeSettingsDrawer } from '@/components/theme/theme-settings';
 import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, TooltipProvider } from '@/components/ui';
-import { BarChart3, Bell, Boxes, Building2, CalendarDays, ChevronLeft, ClipboardCheck, Database, Home, LogOut, Menu, Printer, QrCode, Settings, ShieldCheck, Users, type LucideIcon } from 'lucide-react';
+import { BarChart3, Bell, Boxes, Building2, CalendarDays, ChevronLeft, ClipboardCheck, Database, Home, LogOut, Menu, Printer, QrCode, Settings, ShieldCheck, TrendingUp, Users, type LucideIcon } from 'lucide-react';
 
 interface NavItem { path: string; labelKey: string; icon: LucideIcon; permissions: string[] }
 interface NavGroup { titleKey: string; items: NavItem[] }
 const NAV_GROUPS: NavGroup[] = [
   { titleKey: 'nav.homeGroup', items: [{ path: '/', labelKey: 'nav.home', icon: Home, permissions: [] }, { path: '/dashboard', labelKey: 'nav.dashboard', icon: BarChart3, permissions: ['dashboard.view'] }] },
-  { titleKey: 'nav.operations', items: [{ path: '/inventory', labelKey: 'nav.inventory', icon: Boxes, permissions: ['inventory.view'] }, { path: '/compliance', labelKey: 'nav.execution', icon: ClipboardCheck, permissions: ['compliance.view', 'compliance.execute'] }] },
+  { titleKey: 'nav.operations', items: [{ path: '/inventory', labelKey: 'nav.inventory', icon: Boxes, permissions: ['inventory.view'] }, { path: '/compliance', labelKey: 'nav.execution', icon: ClipboardCheck, permissions: ['compliance.view', 'compliance.execute'] }, { path: '/monitoring-progress', labelKey: 'Monitoring Progress', icon: TrendingUp, permissions: ['dashboard.view'] }] },
   { titleKey: 'nav.data', items: [{ path: '/master-data', labelKey: 'nav.masterData', icon: Database, permissions: ['master.area.view', 'master.category.view', 'master.item_type.view', 'master.area.manage', 'master.category.manage', 'master.item_type.manage', 'checklist_template.view'] }] },
   { titleKey: 'nav.reporting', items: [{ path: '/qr', labelKey: 'nav.qrCenter', icon: QrCode, permissions: ['qr.view'] }, { path: '/reports', labelKey: 'nav.printCenter', icon: Printer, permissions: ['reports.view'] }] },
   { titleKey: 'nav.administration', items: [{ path: '/users', labelKey: 'nav.users', icon: Users, permissions: ['users.view'] }, { path: '/roles', labelKey: 'nav.roles', icon: ShieldCheck, permissions: ['roles.view'] }] },
