@@ -3,6 +3,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter } from 'react-router-dom';
 import { TooltipProvider } from '@/components/ui';
 import { LanguageProvider } from '@/i18n/LanguageProvider';
+import { LegacyLanguageBridge } from '@/i18n/LegacyLanguageBridge';
 import { queryClient } from './queryClient';
 
 interface ProvidersProps {
@@ -13,6 +14,7 @@ export function Providers({ children }: ProvidersProps) {
   return (
     <QueryClientProvider client={queryClient}>
       <LanguageProvider>
+        <LegacyLanguageBridge />
         <TooltipProvider delayDuration={200}>
           <BrowserRouter>{children}</BrowserRouter>
         </TooltipProvider>
