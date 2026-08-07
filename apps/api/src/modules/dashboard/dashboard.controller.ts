@@ -16,23 +16,18 @@ export class DashboardController {
     return { success: true, data: await this.dashboardService.getMyWork(user.id, month) };
   }
 
+  @Get('progress')
+  @RequirePermissions('dashboard.view')
+  async getProgress(@Query('month') month?: string) {
+    return { success: true, data: await this.dashboardService.getPicProgress(month) };
+  }
+
   @Get('summary')
   @RequirePermissions('dashboard.view')
-  async getSummary(
-    @CurrentUser() user: SanitizedUserDto,
-    @Query('areaId') areaId?: string,
-    @Query('categoryId') categoryId?: string,
-    @Query('month') month?: string,
-  ) {
-    const filters = {
-      areaId: areaId ? parseInt(areaId, 10) : undefined,
-      categoryId: categoryId ? parseInt(categoryId, 10) : undefined,
-    };
+  async getSummary(@CurrentUser() user: SanitizedUserDto, @Query('areaId') areaId?: string, @Query('categoryId') categoryId?: string, @Query('month') month?: string) {
+    const filters = { areaId: areaId ? parseInt(areaId, 10) : undefined, categoryId: categoryId ? parseInt(categoryId, 10) : undefined };
     const [summary, compliance, breakdowns, myWork] = await Promise.all([
-      this.dashboardService.getSummary(filters),
-      this.dashboardService.getComplianceStatus(filters),
-      this.dashboardService.getBreakdowns(filters),
-      this.dashboardService.getMyWork(user.id, month),
+      this.dashboardService.getSummary(filters), this.dashboardService.getComplianceStatus(filters), this.dashboardService.getBreakdowns(filters), this.dashboardService.getMyWork(user.id, month),
     ]);
     return { success: true, data: { summary, compliance, breakdowns, myWork } };
   }
