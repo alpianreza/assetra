@@ -205,7 +205,11 @@ model ChecklistTemplateSession {
   @@unique([templateId, sessionId])
   @@map("checklist_template_sessions")
 }
-enum ChecklistLogStatus { ok not_ok na }
+enum ChecklistLogStatus {
+  ok
+  not_ok
+  na
+}
 model ChecklistLog {
   id Int @id @default(autoincrement())
   inventoryId Int
@@ -229,7 +233,10 @@ model ChecklistLog {
   @@index([inventoryId, periodKey])
   @@map("checklist_logs")
 }
-enum WorkingDayType { WORKING OFF }
+enum WorkingDayType {
+  WORKING
+  OFF
+}
 model WorkingDayConfiguration {
   id Int @id @default(autoincrement())
   dayOfWeek Int @unique
@@ -260,8 +267,15 @@ model Evidence {
   uploadedBy User @relation(fields: [uploadedById], references: [id])
   @@map("evidence")
 }
-enum NotificationChannel { WHATSAPP EMAIL }
-enum NotificationStatus { PENDING SENT FAILED }
+enum NotificationChannel {
+  WHATSAPP
+  EMAIL
+}
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+}
 model Notification {
   id Int @id @default(autoincrement())
   userId Int
