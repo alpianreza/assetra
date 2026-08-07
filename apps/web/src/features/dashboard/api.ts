@@ -1,84 +1,21 @@
 const API_BASE = '/api/v1'
 
-export interface PendingWorkItem {
-  id: number
-  assetCode: string
-  itemType: string
-  category: string
-  area: string
-  specificArea?: string | null
-  frequency: 'daily' | 'weekly' | 'monthly'
-  remaining: number
-  firstPeriodKey: string
-  firstPeriodLabel: string
-  templateId?: number | null
-}
-
-export interface MyWorkSummary {
-  month: string
-  totalInventories: number
-  totalRequired: number
-  completed: number
-  pending: number
-  findings: number
-  progress: number
-  pendingItems: PendingWorkItem[]
-}
-
+export interface PendingWorkItem { id: number; assetCode: string; itemType: string; category: string; area: string; specificArea?: string | null; frequency: 'daily' | 'weekly' | 'monthly'; remaining: number; firstPeriodKey: string; firstPeriodLabel: string; templateId?: number | null }
+export interface MyWorkSummary { month: string; totalInventories: number; totalRequired: number; completed: number; pending: number; findings: number; progress: number; pendingItems: PendingWorkItem[] }
 export interface HomeResponse { success: boolean; data: MyWorkSummary }
+export interface DashboardResponse { success: boolean; data: { summary: { total: number; active: number; inactive: number; maintenance: number; disposed: number }; compliance: { completed: number; pending: number; late: number }; breakdowns: { byArea: Record<string, number>; byCategory: Record<string, number> }; myWork: MyWorkSummary } }
 
-export interface DashboardResponse {
-  success: boolean
-  data: {
-    summary: { total: number; active: number; inactive: number; maintenance: number; disposed: number }
-    compliance: { completed: number; pending: number; late: number }
-    breakdowns: { byArea: Record<string, number>; byCategory: Record<string, number> }
-    myWork: MyWorkSummary
-  }
-}
+export interface PicProgressMissingPeriod { periodKey: string; label: string; status: 'pending' | 'late' }
+export interface PicProgressInventory { inventoryId: number; assetCode: string; itemType: string; category: string; area: string; specificArea?: string | null; frequency: 'daily' | 'weekly' | 'monthly'; missing: PicProgressMissingPeriod[] }
+export interface PicProgressRow { userId: number; name: string; username: string; email?: string | null; totalInventories: number; required: number; completed: number; pending: number; late: number; findings: number; progress: number; missingInventories: PicProgressInventory[] }
+export interface PicProgressData { month: string; summary: { totalPics: number; totalInventories: number; totalRequired: number; completed: number; pending: number; late: number; findings: number; averageProgress: number }; rows: PicProgressRow[] }
+export interface PicProgressResponse { success: boolean; data: PicProgressData }
 
-export async function fetchHomeSummary(month?: string): Promise<HomeResponse> {
-  const qs = new URLSearchParams();
-  if (month) qs.set('month', month);
-  const res = await fetch(`${API_BASE}/dashboard/home?${qs.toString()}`, { credentials: 'include' });
-  if (!res.ok) throw new Error(`Home summary failed: ${res.status}`);
-  return res.json();
-}
-
-export async function fetchDashboardSummary(params: { areaId?: string; categoryId?: string; month?: string }): Promise<DashboardResponse> {
-  const qs = new URLSearchParams();
-  if (params.areaId) qs.set('areaId', params.areaId);
-  if (params.categoryId) qs.set('categoryId', params.categoryId);
-  if (params.month) qs.set('month', params.month);
-  const res = await fetch(`${API_BASE}/dashboard/summary?${qs.toString()}`, { credentials: 'include' });
-  if (!res.ok) throw new Error(`Dashboard summary failed: ${res.status}`);
-  return res.json();
-}
+export async function fetchHomeSummary(month?: string): Promise<HomeResponse> { const qs = new URLSearchParams(); if (month) qs.set('month', month); const res = await fetch(`${API_BASE}/dashboard/home?${qs.toString()}`, { credentials: 'include' }); if (!res.ok) throw new Error(`Home summary failed: ${res.status}`); return res.json(); }
+export async function fetchDashboardSummary(params: { areaId?: string; categoryId?: string; month?: string }): Promise<DashboardResponse> { const qs = new URLSearchParams(); if (params.areaId) qs.set('areaId', params.areaId); if (params.categoryId) qs.set('categoryId', params.categoryId); if (params.month) qs.set('month', params.month); const res = await fetch(`${API_BASE}/dashboard/summary?${qs.toString()}`, { credentials: 'include' }); if (!res.ok) throw new Error(`Dashboard summary failed: ${res.status}`); return res.json(); }
+export async function fetchPicProgress(month?: string): Promise<PicProgressResponse> { const qs = new URLSearchParams(); if (month) qs.set('month', month); const res = await fetch(`${API_BASE}/dashboard/progress?${qs.toString()}`, { credentials: 'include' }); if (!res.ok) throw new Error(`Progress monitoring failed: ${res.status}`); return res.json(); }
 
 export interface ExportPayload { inventoryIds: number[]; templateId: number; periodKey: string; sessionId?: number }
-
-function readCookie(name: string): string | null {
-  if (typeof document === 'undefined') return null;
-  const matches = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  return matches ? decodeURIComponent(matches[1]) : null;
-}
-
-export async function exportComplianceXlsx(payload: ExportPayload): Promise<Blob> {
-  let csrf = readCookie('assetra_csrf');
-  if (!csrf) {
-    const csrfRes = await fetch(`${API_BASE}/auth/csrf`, { credentials: 'include' });
-    if (csrfRes.ok) csrf = (await csrfRes.json()).data.csrfToken;
-  }
-  const res = await fetch(`${API_BASE}/reports/compliance/export.xlsx`, {
-    method: 'POST', headers: { 'Content-Type': 'application/json', ...(csrf ? { 'X-CSRF-Token': csrf } : {}) },
-    credentials: 'include', body: JSON.stringify(payload),
-  });
-  if (!res.ok) throw new Error(`Compliance export failed: ${res.status}`);
-  return res.blob();
-}
-
-export async function exportInventoryXlsx(): Promise<Blob> {
-  const res = await fetch(`${API_BASE}/inventory/export.xlsx`, { credentials: 'include' });
-  if (!res.ok) throw new Error(`Inventory export failed: ${res.status}`);
-  return res.blob();
-}
+function readCookie(name: string): string | null { if (typeof document === 'undefined') return null; const matches = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`)); return matches ? decodeURIComponent(matches[1]) : null; }
+export async function exportComplianceXlsx(payload: ExportPayload): Promise<Blob> { let csrf = readCookie('assetra_csrf'); if (!csrf) { const csrfRes = await fetch(`${API_BASE}/auth/csrf`, { credentials: 'include' }); if (csrfRes.ok) csrf = (await csrfRes.json()).data.csrfToken; } const res = await fetch(`${API_BASE}/reports/compliance/export.xlsx`, { method: 'POST', headers: { 'Content-Type': 'application/json', ...(csrf ? { 'X-CSRF-Token': csrf } : {}) }, credentials: 'include', body: JSON.stringify(payload) }); if (!res.ok) throw new Error(`Compliance export failed: ${res.status}`); return res.blob(); }
+export async function exportInventoryXlsx(): Promise<Blob> { const res = await fetch(`${API_BASE}/inventory/export.xlsx`, { credentials: 'include' }); if (!res.ok) throw new Error(`Inventory export failed: ${res.status}`); return res.blob(); }
