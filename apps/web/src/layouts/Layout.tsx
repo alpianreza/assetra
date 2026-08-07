@@ -11,7 +11,7 @@ import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { ThemeSettingsDrawer } from '@/components/theme/theme-settings';
 import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, TooltipProvider } from '@/components/ui';
-import { BarChart3, Bell, Boxes, Building2, CalendarDays, ChevronLeft, ClipboardCheck, Clock, Database, FileText, Home, LogOut, Menu, Printer, QrCode, Settings, ShieldCheck, Users, type LucideIcon } from 'lucide-react';
+import { BarChart3, Bell, Boxes, Building2, CalendarDays, ChevronLeft, ClipboardCheck, Database, Home, LogOut, Menu, Printer, QrCode, Settings, ShieldCheck, Users, type LucideIcon } from 'lucide-react';
 
 interface NavItem { path: string; labelKey: string; icon: LucideIcon; permissions: string[] }
 interface NavGroup { titleKey: string; items: NavItem[] }
@@ -25,12 +25,8 @@ const NAV_GROUPS: NavGroup[] = [
     { path: '/inventory', labelKey: 'nav.inventory', icon: Boxes, permissions: ['inventory.view'] },
     { path: '/compliance', labelKey: 'nav.execution', icon: ClipboardCheck, permissions: ['compliance.view', 'compliance.execute'] },
   ] },
-  { titleKey: 'nav.compliance', items: [
-    { path: '/checklist/templates', labelKey: 'nav.checklistMaster', icon: FileText, permissions: ['checklist_template.view'] },
-    { path: '/checklist/sessions', labelKey: 'nav.sessions', icon: Clock, permissions: ['checklist_session.view'] },
-  ] },
   { titleKey: 'nav.data', items: [
-    { path: '/master-data', labelKey: 'nav.masterData', icon: Database, permissions: ['master.area.view', 'master.category.view', 'master.item_type.view', 'master.area.manage', 'master.category.manage', 'master.item_type.manage'] },
+    { path: '/master-data', labelKey: 'nav.masterData', icon: Database, permissions: ['master.area.view', 'master.category.view', 'master.item_type.view', 'master.area.manage', 'master.category.manage', 'master.item_type.manage', 'checklist_template.view'] },
   ] },
   { titleKey: 'nav.reporting', items: [
     { path: '/qr', labelKey: 'nav.qrCenter', icon: QrCode, permissions: ['qr.view'] },
@@ -55,7 +51,8 @@ export function Layout() {
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   const logoutMutation = useMutation({ mutationFn: logout, onSuccess: () => { queryClient.setQueryData(AUTH_QUERY_KEY, null); navigate('/login'); } });
-  const isActive = (path: string) => location.pathname === path || (path !== '/' && location.pathname.startsWith(path));
+  const isMasterDataPath = location.pathname === '/master-data' || location.pathname.startsWith('/master/') || location.pathname.startsWith('/checklist/templates');
+  const isActive = (path: string) => path === '/master-data' ? isMasterDataPath : location.pathname === path || (path !== '/' && location.pathname.startsWith(path));
   const visibleGroups = NAV_GROUPS.map(group => ({ ...group, items: group.items.filter(item => item.permissions.length === 0 || item.permissions.some(hasPermission)) })).filter(group => group.items.length);
   const currentItem = NAV_GROUPS.flatMap(group => group.items).find(item => isActive(item.path));
   const initials = user?.name ? user.name.split(' ').map(part => part[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() : 'A';
