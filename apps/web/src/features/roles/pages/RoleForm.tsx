@@ -1,48 +1,6 @@
 import { useState } from 'react';
 import { useCreateRole, useUpdateRole } from '../hooks';
-import { Button, Input, Label, Checkbox } from '@/components/ui';
-
-interface RoleFormProps { role: any; groups: any[]; onClose: () => void; onSaved: () => void; }
-
-export function RoleForm({ role, groups, onClose, onSaved }: RoleFormProps) {
-  const createRole = useCreateRole();
-  const updateRole = useUpdateRole();
-  const [name, setName] = useState(role?.name ?? '');
-  const [selectedPerms, setSelectedPerms] = useState<string[]>(role?.permissions ?? []);
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-
-  const togglePerm = (permission: string) => setSelectedPerms(previous => previous.includes(permission) ? previous.filter(item => item !== permission) : [...previous, permission]);
-  const handleSubmit = async (event: React.FormEvent) => {
-    event.preventDefault(); setError(null);
-    if (!name.trim()) return setError('Nama role wajib diisi');
-    setSaving(true);
-    try {
-      const allPermissions = groups.flatMap((group: any) => group.permissions);
-      const permissionIds = allPermissions.filter((permission: any) => selectedPerms.includes(permission.name)).map((permission: any) => permission.id);
-      const payload = { name: name.trim(), permissionIds };
-      if (role) await updateRole.mutateAsync({ id: role.id, data: payload }); else await createRole.mutateAsync(payload);
-      onSaved();
-    } catch (caught: any) { setError(caught?.message || 'Terjadi kesalahan saat menyimpan'); } finally { setSaving(false); }
-  };
-
-  return <form onSubmit={handleSubmit} className="space-y-4"><div><Label>Nama Role</Label><Input value={name} onChange={event => setName(event.target.value)} disabled={role?.system} /></div><div><Label className="mb-2 block">Hak Akses</Label><div className="space-y-3 max-h-[50vh] overflow-y-auto pr-2">{groups.map((group: any) => <div key={group.key} className="border rounded-lg p-3 bg-muted/20"><p className="text-sm font-semibold mb-2">{groupLabel(group.key)}</p><div className="grid gap-2 sm:grid-cols-2">{group.permissions.map((permission: any) => <label key={permission.id} className="flex items-center gap-2 text-sm cursor-pointer"><Checkbox checked={selectedPerms.includes(permission.name)} onCheckedChange={() => togglePerm(permission.name)} />{permissionLabel(permission.name)}</label>)}</div></div>)}</div></div>{error && <p className="text-sm text-destructive">{error}</p>}<div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={onClose}>Batal</Button><Button type="submit" disabled={saving}>{saving ? 'Menyimpan...' : 'Simpan'}</Button></div></form>;
-}
-
-function groupLabel(key: string): string {
-  const labels: Record<string, string> = { users: 'Pengguna', roles: 'Role & Permission', area: 'Master Area', category: 'Kategori', itemType: 'Jenis Item', inventory: 'Inventaris', checklistTemplate: 'Checklist Master', checklistSession: 'Sesi Checklist', compliance: 'Akses Checklist Inventaris', qr: 'QR Center', organization: 'Organisasi', reports: 'Laporan', dashboard: 'Dashboard', workingDay: 'Hari Kerja', holiday: 'Hari Libur' };
-  return labels[key] ?? key;
-}
-
-function permissionLabel(name: string): string {
-  const labels: Record<string, string> = {
-    'users.view': 'Lihat Pengguna', 'users.create': 'Tambah Pengguna', 'users.update': 'Ubah Pengguna', 'users.delete': 'Hapus Pengguna', 'roles.view': 'Lihat Role', 'roles.manage': 'Kelola Role',
-    'master.area.view': 'Lihat Area', 'master.area.manage': 'Kelola Area', 'master.category.view': 'Lihat Kategori', 'master.category.manage': 'Kelola Kategori', 'master.item_type.view': 'Lihat Jenis Item', 'master.item_type.manage': 'Kelola Jenis Item',
-    'inventory.view': 'Lihat Inventaris', 'inventory.create': 'Tambah Inventaris', 'inventory.update': 'Ubah Inventaris', 'inventory.delete': 'Hapus Inventaris',
-    'checklist_template.view': 'Lihat Checklist Master', 'checklist_template.create': 'Tambah Checklist Master', 'checklist_template.update': 'Ubah Pertanyaan', 'checklist_template.delete': 'Hapus Checklist Master',
-    'checklist_session.view': 'Lihat Sesi', 'checklist_session.manage': 'Kelola Sesi',
-    'compliance.view': 'Lihat Hasil & Grid Checklist', 'compliance.execute': 'Tombol Checklist / Isi Checklist', 'compliance.manage': 'Kelola Compliance',
-    'qr.view': 'Lihat QR', 'qr.print': 'Cetak QR', 'settings.organization.view': 'Lihat Organisasi', 'settings.organization.manage': 'Kelola Organisasi', 'reports.view': 'Lihat Laporan', 'reports.export': 'Export Laporan', 'dashboard.view': 'Lihat Dashboard', 'settings.working_day.manage': 'Atur Hari Kerja (termasuk Sabtu)', 'settings.holiday.manage': 'Kelola Hari Libur & Pengecualian',
-  };
-  return labels[name] ?? name;
-}
+import { Button, Checkbox, Input, Label } from '@/components/ui';
+import { CheckSquare2, Search } from 'lucide-react';
+export function RoleForm({role,groups,onClose,onSaved}:{role:any;groups:any[];onClose:()=>void;onSaved:()=>void}){const create=useCreateRole();const update=useUpdateRole();const[name,setName]=useState(role?.name??'');const[selected,setSelected]=useState<string[]>(role?.permissions??[]);const[search,setSearch]=useState('');const[error,setError]=useState<string|null>(null);const[saving,setSaving]=useState(false);const toggle=(name:string)=>setSelected(p=>p.includes(name)?p.filter(x=>x!==name):[...p,name]);const toggleGroup=(permissions:any[])=>{const names=permissions.map(p=>p.name);const all=names.every(n=>selected.includes(n));setSelected(p=>all?p.filter(n=>!names.includes(n)):[...new Set([...p,...names])])};const submit=async(e:React.FormEvent)=>{e.preventDefault();if(!name.trim())return setError('Nama role wajib diisi');setSaving(true);try{const all=groups.flatMap((g:any)=>g.permissions);const payload={name:name.trim(),permissionIds:all.filter((p:any)=>selected.includes(p.name)).map((p:any)=>p.id)};role?await update.mutateAsync({id:role.id,data:payload}):await create.mutateAsync(payload);onSaved()}catch(c:any){setError(c.message)}finally{setSaving(false)}};const visible=groups.map((g:any)=>({...g,permissions:g.permissions.filter((p:any)=>`${p.name} ${permissionLabel(p.name)}`.toLowerCase().includes(search.toLowerCase()))})).filter((g:any)=>g.permissions.length);return <form onSubmit={submit} className="space-y-5"><div><Label>Nama Role</Label><Input value={name} onChange={e=>setName(e.target.value)} disabled={role?.system}/></div><div className="flex items-center justify-between"><Label>Hak Akses</Label><span className="text-xs font-semibold text-primary">{selected.length} dipilih</span></div><div className="relative"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"/><Input className="pl-9" placeholder="Cari hak akses..." value={search} onChange={e=>setSearch(e.target.value)}/></div><div className="max-h-[52vh] space-y-3 overflow-y-auto pr-2">{visible.map((g:any)=>{const all=g.permissions.every((p:any)=>selected.includes(p.name));return <section key={g.key} className="rounded-xl border bg-muted/15 p-4"><button type="button" className="mb-3 flex w-full items-center justify-between text-sm font-semibold" onClick={()=>toggleGroup(g.permissions)}><span>{groupLabel(g.key)}</span><span className="flex items-center gap-1 text-xs text-primary"><CheckSquare2 className="h-4 w-4"/>{all?'Batalkan semua':'Pilih semua'}</span></button><div className="grid gap-2 sm:grid-cols-2">{g.permissions.map((p:any)=><label key={p.id} className="flex cursor-pointer items-start gap-2 rounded-lg p-2 text-sm hover:bg-muted"><Checkbox checked={selected.includes(p.name)} onCheckedChange={()=>toggle(p.name)}/><span><span className="block font-medium">{permissionLabel(p.name)}</span><span className="text-[10px] text-muted-foreground">{p.name}</span></span></label>)}</div></section>})}</div>{error&&<p className="text-sm text-destructive">{error}</p>}<div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={onClose}>Batal</Button><Button disabled={saving}>{saving?'Menyimpan...':'Simpan Role'}</Button></div></form>}
+function groupLabel(k:string){return({users:'Pengguna',roles:'Role & Permission',area:'Master Area',category:'Kategori',itemType:'Jenis Item',inventory:'Inventaris',checklistTemplate:'Checklist Master',compliance:'Pelaksanaan Checklist',qr:'QR Center',organization:'Organisasi',reports:'Laporan',dashboard:'Dashboard & Monitoring',workingDay:'Hari Kerja',holiday:'Hari Libur'}as Record<string,string>)[k]??k}function permissionLabel(n:string){const action=n.split('.').pop();return action==='view'?'Lihat data':action==='create'?'Tambah data':action==='update'?'Ubah data':action==='delete'?'Hapus data':action==='execute'?'Isi checklist':action==='print'?'Cetak':action==='export'?'Export':action==='manage'?'Kelola penuh':n}

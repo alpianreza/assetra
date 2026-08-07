@@ -2,101 +2,13 @@ import { useState } from 'react';
 import { useRoles, usePermissions, useDeleteRole } from '../hooks';
 import { RoleForm } from './RoleForm';
 import { useAuth } from '../../auth/useAuth';
-import { Button, Card, CardHeader, CardTitle, CardContent, Badge, Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui';
-import { Plus, Pencil, Trash2, Shield } from 'lucide-react';
+import { Badge, Button, Card, CardContent, Dialog, DialogContent, DialogHeader, DialogTitle, Input } from '@/components/ui';
+import { EmptyState, Skeleton } from '@/components/shared/states';
+import { KeyRound, Pencil, Plus, Search, Shield, Trash2, Users } from 'lucide-react';
 
 export function RolesPage() {
-  const { hasPermission } = useAuth();
-  const { data, isLoading } = useRoles();
-  const { data: permData } = usePermissions();
-  const deleteRole = useDeleteRole();
-
-  const [formOpen, setFormOpen] = useState(false);
-  const [editingRole, setEditingRole] = useState<any>(null);
-
-  const roles = data?.data ?? [];
-  const groups = permData?.data?.grouped ?? [];
-
-  const openCreate = () => { setEditingRole(null); setFormOpen(true); };
-  const openEdit = (r: any) => { setEditingRole(r); setFormOpen(true); };
-
-  const handleDelete = async (r: any) => {
-    if (r.system) { alert('Role Super Admin tidak dapat dihapus'); return; }
-    if (window.confirm(`Hapus role ${r.name}?`)) {
-      try {
-        await deleteRole.mutateAsync(r.id);
-      } catch (e: any) {
-        alert(e?.message || 'Gagal menghapus role');
-      }
-    }
-  };
-
-  const canManage = hasPermission('roles.manage');
-
-  return (
-    <div>
-      <div className="flex items-center justify-between mb-6">
-        <h2 className="text-xl font-bold text-foreground">Role &amp; Permission</h2>
-        {canManage && (
-          <Dialog open={formOpen} onOpenChange={setFormOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={openCreate}>
-                <Plus className="h-4 w-4 mr-2" /> Tambah Role
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-              <DialogHeader>
-                <DialogTitle>{editingRole ? 'Edit Role' : 'Tambah Role'}</DialogTitle>
-              </DialogHeader>
-              <RoleForm
-                role={editingRole}
-                groups={groups}
-                onClose={() => setFormOpen(false)}
-                onSaved={() => setFormOpen(false)}
-              />
-            </DialogContent>
-          </Dialog>
-        )}
-      </div>
-
-      {isLoading ? (
-        <p className="text-muted-foreground py-8 text-center">Memuat role...</p>
-      ) : roles.length === 0 ? (
-        <p className="text-muted-foreground py-8 text-center">Tidak ada role.</p>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {roles.map((r: any) => (
-            <Card key={r.id}>
-              <CardHeader className="pb-3 flex flex-row items-center justify-between">
-                <div>
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Shield className="h-4 w-4 text-primary" /> {r.name}
-                  </CardTitle>
-                  <p className="text-xs text-muted-foreground mt-1">{r.userCount} pengguna</p>
-                </div>
-                {r.system && <Badge variant="secondary">System</Badge>}
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex flex-wrap gap-1.5">
-                  {r.permissions?.length ? (
-                    r.permissions.map((p: string) => (
-                      <Badge key={p} variant="outline" className="text-xs">{p}</Badge>
-                    ))
-                  ) : (
-                    <span className="text-xs text-muted-foreground">Tanpa permission</span>
-                  )}
-                </div>
-                {canManage && !r.system && (
-                  <div className="flex gap-2 pt-2 border-t">
-                    <Button variant="ghost" size="sm" onClick={() => openEdit(r)}><Pencil className="h-4 w-4 mr-1" /> Edit</Button>
-                    <Button variant="ghost" size="sm" className="text-destructive hover:text-destructive" onClick={() => handleDelete(r)}><Trash2 className="h-4 w-4 mr-1" /> Hapus</Button>
-                  </div>
-                )}
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
-    </div>
-  );
+  const { hasPermission }=useAuth(); const {data,isLoading}=useRoles(); const {data:permData}=usePermissions(); const removeRole=useDeleteRole(); const [open,setOpen]=useState(false); const [editing,setEditing]=useState<any>(null); const [search,setSearch]=useState('');
+  const roles=data?.data??[]; const groups=permData?.data?.grouped??[]; const filtered=roles.filter((role:any)=>role.name.toLowerCase().includes(search.toLowerCase())); const totalPermissions=groups.reduce((sum:number,group:any)=>sum+group.permissions.length,0); const canManage=hasPermission('roles.manage');
+  const showForm=(role:any=null)=>{setEditing(role);setOpen(true)}; const remove=async(role:any)=>{if(role.system)return alert('Role sistem tidak dapat dihapus');if(confirm(`Hapus role ${role.name}?`))await removeRole.mutateAsync(role.id).catch((e:any)=>alert(e.message));};
+  return <div className="space-y-6"><section className="rounded-3xl border border-primary/15 bg-gradient-to-br from-primary/15 via-card to-card p-6 sm:p-8"><div className="flex flex-col gap-5 sm:flex-row sm:items-end sm:justify-between"><div><p className="text-xs font-bold uppercase tracking-[.2em] text-primary">Kontrol akses</p><h1 className="mt-2 text-2xl font-bold">Role & Permission</h1><p className="mt-2 text-sm text-muted-foreground">Atur hak akses setiap kelompok pengguna secara aman dan mudah dipahami.</p></div>{canManage&&<Button onClick={()=>showForm()}><Plus className="mr-2 h-4 w-4"/>Tambah Role</Button>}</div></section><div className="grid gap-4 sm:grid-cols-3"><Card><CardContent className="flex items-center gap-4 p-5"><Shield className="h-8 w-8 text-primary"/><div><p className="text-xs text-muted-foreground">Total role</p><strong className="text-2xl">{roles.length}</strong></div></CardContent></Card><Card><CardContent className="flex items-center gap-4 p-5"><KeyRound className="h-8 w-8 text-violet-500"/><div><p className="text-xs text-muted-foreground">Hak akses</p><strong className="text-2xl">{totalPermissions}</strong></div></CardContent></Card><Card><CardContent className="flex items-center gap-4 p-5"><Users className="h-8 w-8 text-emerald-500"/><div><p className="text-xs text-muted-foreground">Pengguna terhubung</p><strong className="text-2xl">{roles.reduce((s:number,r:any)=>s+(r.userCount||0),0)}</strong></div></CardContent></Card></div><div className="relative max-w-md"><Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground"/><Input className="pl-9" placeholder="Cari role..." value={search} onChange={e=>setSearch(e.target.value)}/></div>{isLoading?<div className="grid gap-4 md:grid-cols-2">{[1,2,3,4].map(i=><Skeleton key={i} className="h-56"/>)}</div>:!filtered.length?<EmptyState title="Role tidak ditemukan"/>:<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">{filtered.map((role:any)=><Card key={role.id} className="overflow-hidden"><div className="h-1 bg-gradient-to-r from-primary to-cyan-400"/><CardContent className="p-5"><div className="flex items-start justify-between"><span className="flex h-11 w-11 items-center justify-center rounded-xl bg-primary/10 text-primary"><Shield className="h-5 w-5"/></span>{role.system&&<Badge variant="secondary">System</Badge>}</div><h3 className="mt-4 text-lg font-bold">{role.name}</h3><p className="text-sm text-muted-foreground">{role.userCount||0} pengguna · {role.permissions?.length||0} hak akses</p><div className="mt-4 flex min-h-16 flex-wrap content-start gap-1.5">{role.permissions?.slice(0,7).map((permission:string)=><Badge key={permission} variant="outline" className="text-[10px]">{permission}</Badge>)}{role.permissions?.length>7&&<Badge variant="secondary">+{role.permissions.length-7}</Badge>}{!role.permissions?.length&&<span className="text-xs text-muted-foreground">Tanpa hak akses</span>}</div>{canManage&&!role.system&&<div className="mt-5 flex gap-2 border-t pt-4"><Button variant="outline" size="sm" className="flex-1" onClick={()=>showForm(role)}><Pencil className="mr-1 h-4 w-4"/>Edit</Button><Button variant="ghost" size="sm" className="text-destructive" onClick={()=>remove(role)}><Trash2 className="h-4 w-4"/></Button></div>}</CardContent></Card>)}</div>}<Dialog open={open} onOpenChange={setOpen}><DialogContent className="max-h-[92vh] max-w-3xl overflow-y-auto"><DialogHeader><DialogTitle>{editing?'Edit Role':'Tambah Role'}</DialogTitle></DialogHeader><RoleForm role={editing} groups={groups} onClose={()=>setOpen(false)} onSaved={()=>setOpen(false)}/></DialogContent></Dialog></div>;
 }
