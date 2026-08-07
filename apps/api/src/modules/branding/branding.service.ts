@@ -10,7 +10,7 @@ export class BrandingService {
     return {
       name: org?.name ?? 'Assetra',
       shortName: org?.shortName ?? 'Assetra',
-      logoUrl: org?.logoPath ? '/api/v1/settings/organization/logo' : null,
+      logoUrl: org?.logoPath ? '/api/v1/branding/logo' : null,
       logoPath: org?.logoPath ?? null,
       address: org?.address ?? null,
       phone: org?.phone ?? null,
