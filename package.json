@@ -3,14 +3,19 @@
   "version": "0.0.1",
   "private": true,
   "scripts": {
-    "dev": "pnpm --filter web dev & pnpm --filter api dev",
-    "build": "pnpm --filter web build && pnpm --filter api build",
-    "lint": "pnpm --filter web lint && pnpm --filter api lint",
-    "typecheck": "pnpm --filter web typecheck && pnpm --filter api typecheck",
-    "test": "pnpm --filter web test && pnpm --filter api test",
-    "db:generate": "pnpm --filter api db:generate",
-    "db:push": "pnpm --filter api db:push",
-    "db:studio": "pnpm --filter api db:studio"
+    "dev": "pnpm --parallel --filter @assetra/web --filter @assetra/api dev",
+    "build": "pnpm --filter @assetra/web build && pnpm --filter @assetra/api build",
+    "start:prod": "pnpm --filter @assetra/api start:prod",
+    "lint": "pnpm --filter @assetra/web lint && pnpm --filter @assetra/api lint",
+    "typecheck": "pnpm --filter @assetra/web typecheck && pnpm --filter @assetra/api typecheck",
+    "test": "pnpm --filter @assetra/web test && pnpm --filter @assetra/api test",
+    "db:generate": "pnpm --filter @assetra/api db:generate",
+    "db:migrate": "pnpm --filter @assetra/api db:migrate",
+    "db:migrate-deploy": "pnpm --filter @assetra/api db:migrate-deploy",
+    "db:studio": "pnpm --filter @assetra/api db:studio",
+    "seed:permissions": "pnpm --filter @assetra/api seed:permissions",
+    "seed:checklist": "pnpm --filter @assetra/api seed:checklist",
+    "admin:create": "pnpm --filter @assetra/api admin:create"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
