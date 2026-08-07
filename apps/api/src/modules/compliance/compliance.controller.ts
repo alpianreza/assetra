@@ -1,33 +1,18 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Post, Query, Res, UploadedFiles, UseGuards, UseInterceptors } from '@nestjs/common';
 import { AnyFilesInterceptor } from '@nestjs/platform-express';
-import { Response } from 'express';
-import { diskStorage } from 'multer';
-import * as path from 'path';
-import * as crypto from 'crypto';
-import { mkdirSync } from 'fs';
-import { ComplianceService } from './compliance.service';
-import { ChecklistExecutionService } from './checklist-execution.service';
-import { ComplianceResultsService } from './compliance-results.service';
-import { ComplianceEvidenceService } from './compliance-evidence.service';
-import { SubmitChecklistDto } from './compliance.dto';
-import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
-import { PermissionsGuard } from '../auth/guards/permissions.guard';
-import { RequireAnyPermissions, RequirePermissions } from '../auth/decorators/permissions.decorator';
-import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { SanitizedUserDto } from '../auth/dto/user-response.dto';
-const PHOTO_MIMES = ['image/jpeg','image/png','image/webp'];
-@Controller('compliance')
-@UseGuards(SessionAuthGuard, PermissionsGuard)
+import { Response } from 'express'; import { diskStorage } from 'multer'; import * as path from 'path'; import * as crypto from 'crypto'; import { mkdirSync } from 'fs';
+import { ComplianceService } from './compliance.service'; import { ChecklistExecutionService } from './checklist-execution.service'; import { ComplianceResultsService } from './compliance-results.service'; import { ComplianceEvidenceService } from './compliance-evidence.service'; import { SubmitChecklistDto } from './compliance.dto';
+import { SessionAuthGuard } from '../auth/guards/session-auth.guard'; import { PermissionsGuard } from '../auth/guards/permissions.guard'; import { RequireAnyPermissions, RequirePermissions } from '../auth/decorators/permissions.decorator'; import { CurrentUser } from '../auth/decorators/current-user.decorator'; import { SanitizedUserDto } from '../auth/dto/user-response.dto';
+const PHOTO_MIMES=['image/jpeg','image/png','image/webp'];
+@Controller('compliance') @UseGuards(SessionAuthGuard,PermissionsGuard)
 export class ComplianceController {
-  constructor(private readonly complianceService: ComplianceService, private readonly executionService: ChecklistExecutionService, private readonly resultsService: ComplianceResultsService, private readonly evidenceService: ComplianceEvidenceService) {}
+  constructor(private readonly complianceService:ComplianceService,private readonly executionService:ChecklistExecutionService,private readonly resultsService:ComplianceResultsService,private readonly evidenceService:ComplianceEvidenceService){}
   @Get() @RequireAnyPermissions('compliance.view','compliance.execute') async overview(){return{success:true,data:await this.complianceService.overview()}}
+  @Get('evidence') @RequirePermissions('compliance.view') async evidence(@Query('search')search?:string,@Query('month')month?:string,@Query('page')page?:string,@Query('limit')limit?:string){return{success:true,data:await this.evidenceService.list({search,month,page:page?Number(page):1,limit:limit?Number(limit):24})}}
   @Get('evidence/:evidenceId/file') @RequireAnyPermissions('compliance.view','compliance.execute') async evidenceFile(@Param('evidenceId',ParseIntPipe)id:number,@Res()res:Response){const file=await this.evidenceService.getFilePath(id);res.type(file.mimeType);return res.sendFile(file.filePath)}
   @Get('inventory/:inventoryId/periods') @RequireAnyPermissions('compliance.view','compliance.execute') async periods(@Param('inventoryId',ParseIntPipe)id:number,@Query('ym')ym?:string){return{success:true,data:await this.complianceService.inventoryPeriods(id,ym)}}
   @Get('inventory/:inventoryId/checklist') @RequirePermissions('compliance.execute') async build(@Param('inventoryId',ParseIntPipe)id:number,@Query('templateId',ParseIntPipe)templateId:number,@Query('periodKey')periodKey:string,@Query('sessionId')sessionId?:string){return{success:true,data:await this.executionService.buildExecution(id,templateId,periodKey,sessionId?Number(sessionId):null)}}
-  @Post('inventory/:inventoryId/checklist')
-  @RequirePermissions('compliance.execute')
-  @UseInterceptors(AnyFilesInterceptor({storage:diskStorage({destination:(_r,_f,cb)=>{const dir=path.join(process.cwd(),'storage','checklist');mkdirSync(dir,{recursive:true});cb(null,dir)},filename:(_r,file,cb)=>cb(null,`${crypto.randomBytes(16).toString('hex')}${path.extname(file.originalname).toLowerCase()||'.jpg'}`)}),fileFilter:(_r,file,cb)=>PHOTO_MIMES.includes(file.mimetype)?cb(null,true):cb(new Error('Foto checklist harus JPEG, PNG, atau WebP'),false),limits:{fileSize:5*1024*1024,files:100}}))
-  async submit(@Param('inventoryId',ParseIntPipe)inventoryId:number,@Query('templateId',ParseIntPipe)templateId:number,@Body()dto:SubmitChecklistDto,@UploadedFiles()files:Express.Multer.File[],@CurrentUser()user:SanitizedUserDto){const photoByQuestion=new Map<number,string>();for(const file of files??[]){const match=/^photo_(\d+)$/.exec(file.fieldname);if(match)photoByQuestion.set(Number(match[1]),file.filename)}const answers=dto.answers.map(answer=>({...answer,photo:photoByQuestion.get(answer.questionId)}));const data=await this.executionService.submit(inventoryId,templateId,dto.periodKey,dto.sessionId??null,answers,user.id);const evidence=await this.evidenceService.persistUploadedFiles({inventoryId,templateId,periodKey:dto.periodKey,sessionId:dto.sessionId??null,files:files??[],actorId:user.id});return{success:true,data:{...data,evidenceCount:evidence.length}}}
+  @Post('inventory/:inventoryId/checklist') @RequirePermissions('compliance.execute') @UseInterceptors(AnyFilesInterceptor({storage:diskStorage({destination:(_r,_f,cb)=>{const dir=path.join(process.cwd(),'storage','checklist');mkdirSync(dir,{recursive:true});cb(null,dir)},filename:(_r,file,cb)=>cb(null,`${crypto.randomBytes(16).toString('hex')}${path.extname(file.originalname).toLowerCase()||'.jpg'}`)}),fileFilter:(_r,file,cb)=>PHOTO_MIMES.includes(file.mimetype)?cb(null,true):cb(new Error('Foto checklist harus JPEG, PNG, atau WebP'),false),limits:{fileSize:5*1024*1024,files:100}})) async submit(@Param('inventoryId',ParseIntPipe)inventoryId:number,@Query('templateId',ParseIntPipe)templateId:number,@Body()dto:SubmitChecklistDto,@UploadedFiles()files:Express.Multer.File[],@CurrentUser()user:SanitizedUserDto){const photoByQuestion=new Map<number,string>();for(const file of files??[]){const match=/^photo_(\d+)$/.exec(file.fieldname);if(match)photoByQuestion.set(Number(match[1]),file.filename)}const answers=dto.answers.map(answer=>({...answer,photo:photoByQuestion.get(answer.questionId)}));const data=await this.executionService.submit(inventoryId,templateId,dto.periodKey,dto.sessionId??null,answers,user.id);const evidence=await this.evidenceService.persistUploadedFiles({inventoryId,templateId,periodKey:dto.periodKey,sessionId:dto.sessionId??null,files:files??[],actorId:user.id});return{success:true,data:{...data,evidenceCount:evidence.length}}}
   @Get('inventory/:inventoryId/history/:occurrenceId') @RequirePermissions('compliance.view') async result(@Param('inventoryId',ParseIntPipe)id:number,@Param('occurrenceId',ParseIntPipe)occurrenceId:number){return{success:true,data:await this.resultsService.getResult(id,occurrenceId)}}
   @Get('inventory/:inventoryId/history') @RequirePermissions('compliance.view') async history(@Param('inventoryId',ParseIntPipe)id:number){return{success:true,data:await this.complianceService.history(id)}}
 }
