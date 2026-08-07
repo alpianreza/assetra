@@ -1,115 +1,16 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useCreateUser, useUpdateUser } from '../hooks';
+import { uploadUserPhoto, userPhotoUrl } from '../api';
+import { queryClient } from '@/app/queryClient';
+import { USERS_QUERY_KEY } from '../hooks';
 import { Button, Input, Label, Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui';
+import { Camera, UserRound } from 'lucide-react';
 
-interface UserFormProps {
-  user: any; // existing user when editing, null when creating
-  roles: any[];
-  onClose: () => void;
-  onSaved: () => void;
-}
-
-export function UserForm({ user, roles, onClose, onSaved }: UserFormProps) {
-  const createUser = useCreateUser();
-  const updateUser = useUpdateUser();
-
-  const [name, setName] = useState(user?.name ?? '');
-  const [username, setUsername] = useState(user?.username ?? '');
-  const [email, setEmail] = useState(user?.email ?? '');
-  const [password, setPassword] = useState('');
-  const [status, setStatus] = useState(user?.status ?? 'active');
-  const [roleIds, setRoleIds] = useState<number[]>(user?.roles?.map((r: any) => r.id) ?? []);
-  const [error, setError] = useState<string | null>(null);
-  const [saving, setSaving] = useState(false);
-
-  const toggleRole = (id: number) => {
-    setRoleIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
-  };
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setError(null);
-
-    if (!name.trim()) { setError('Nama wajib diisi'); return; }
-    if (!username.trim()) { setError('Username wajib diisi'); return; }
-    if (!user && !password) { setError('Password wajib diisi saat membuat pengguna'); return; }
-
-    setSaving(true);
-    try {
-      const payload: any = { name: name.trim(), username: username.trim(), email: email.trim() || undefined, roleIds, status };
-      if (password) payload.password = password;
-
-      if (user) {
-        await updateUser.mutateAsync({ id: user.id, data: payload });
-      } else {
-        await createUser.mutateAsync(payload);
-      }
-      onSaved();
-    } catch (e: any) {
-      setError(e?.message || 'Terjadi kesalahan saat menyimpan');
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  return (
-    <form onSubmit={handleSubmit} className="space-y-4">
-      <div>
-        <Label>Nama</Label>
-        <Input type="text" value={name} onChange={(e) => setName(e.target.value)} />
-      </div>
-
-      <div>
-        <Label>Username</Label>
-        <Input type="text" value={username} onChange={(e) => setUsername(e.target.value)} />
-      </div>
-
-      <div>
-        <Label>Email</Label>
-        <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} />
-      </div>
-
-      <div>
-        <Label>Password {user ? '(kosongkan jika tidak diubah)' : ''}</Label>
-        <Input type="password" value={password} onChange={(e) => setPassword(e.target.value)} />
-      </div>
-
-      <div>
-        <Label className="mb-2">Role (bisa lebih dari satu)</Label>
-        <div className="flex flex-wrap gap-2">
-          {roles.map((r: any) => (
-            <Button
-              type="button"
-              key={r.id}
-              variant={roleIds.includes(r.id) ? 'default' : 'outline'}
-              className="rounded-full"
-              onClick={() => toggleRole(r.id)}
-            >
-              {r.name}
-            </Button>
-          ))}
-        </div>
-      </div>
-
-      <div>
-        <Label>Status</Label>
-        <Select value={status} onValueChange={setStatus}>
-          <SelectTrigger>
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="active">Aktif</SelectItem>
-            <SelectItem value="inactive">Nonaktif</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-
-      {error && <p className="text-sm text-red-600">{error}</p>}
-
-      <div className="flex justify-end gap-2 pt-2">
-        <Button type="button" variant="outline" onClick={onClose}>Batal</Button>
-        <Button type="submit" disabled={saving}>{saving ? 'Menyimpan...' : 'Simpan'}</Button>
-      </div>
-    </form>
-  );
+export function UserForm({ user, roles, onClose, onSaved }: { user: any; roles: any[]; onClose: () => void; onSaved: () => void }) {
+  const createUser = useCreateUser(); const updateUser = useUpdateUser();
+  const [name, setName] = useState(user?.name ?? ''); const [username, setUsername] = useState(user?.username ?? ''); const [email, setEmail] = useState(user?.email ?? ''); const [phone, setPhone] = useState(user?.phone ?? ''); const [password, setPassword] = useState(''); const [status, setStatus] = useState(user?.status ?? 'active'); const [roleIds, setRoleIds] = useState<number[]>(user?.roles?.map((role: any) => role.id) ?? []); const [photo, setPhoto] = useState<File | null>(null); const [preview, setPreview] = useState<string | null>(user ? userPhotoUrl(user.id) : null); const [error, setError] = useState<string | null>(null); const [saving, setSaving] = useState(false);
+  useEffect(() => () => { if (preview?.startsWith('blob:')) URL.revokeObjectURL(preview); }, [preview]);
+  const choosePhoto = (file?: File) => { if (!file) return; if (file.size > 3 * 1024 * 1024) return setError('Ukuran foto maksimal 3 MB'); if (!['image/jpeg','image/png','image/webp'].includes(file.type)) return setError('Foto harus JPEG, PNG, atau WebP'); setPhoto(file); setPreview(URL.createObjectURL(file)); };
+  const submit = async (event: React.FormEvent) => { event.preventDefault(); setError(null); if (!name.trim() || !username.trim()) return setError('Nama dan username wajib diisi'); if (!user && !password) return setError('Password wajib diisi saat membuat pengguna'); setSaving(true); try { const payload: any = { name: name.trim(), username: username.trim(), email: email.trim() || undefined, phone: phone.trim() || undefined, roleIds, status }; if (password) payload.password = password; const response = user ? await updateUser.mutateAsync({ id: user.id, data: payload }) : await createUser.mutateAsync(payload); const userId = user?.id ?? response?.data?.id; if (photo && userId) await uploadUserPhoto(userId, photo); await queryClient.invalidateQueries({ queryKey: USERS_QUERY_KEY }); onSaved(); } catch (caught: any) { setError(caught?.message || 'Gagal menyimpan pengguna'); } finally { setSaving(false); } };
+  return <form onSubmit={submit} className="space-y-5"><div className="flex items-center gap-4 rounded-2xl border bg-muted/20 p-4"><div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-2xl bg-primary/10 text-primary">{preview ? <img src={preview} className="h-full w-full object-cover" onError={() => setPreview(null)}/> : <UserRound className="h-8 w-8"/>}</div><div><Label htmlFor="user-photo" className="inline-flex cursor-pointer items-center gap-2 rounded-lg border bg-background px-3 py-2 text-sm font-medium hover:border-primary"><Camera className="h-4 w-4"/>Pilih Foto</Label><input id="user-photo" type="file" accept="image/jpeg,image/png,image/webp" className="hidden" onChange={event => choosePhoto(event.target.files?.[0])}/><p className="mt-2 text-xs text-muted-foreground">JPEG, PNG, WebP · maksimal 3 MB</p></div></div><div className="grid gap-4 sm:grid-cols-2"><div><Label>Nama</Label><Input value={name} onChange={event => setName(event.target.value)}/></div><div><Label>Username</Label><Input value={username} onChange={event => setUsername(event.target.value)}/></div><div><Label>Email</Label><Input type="email" value={email} onChange={event => setEmail(event.target.value)}/></div><div><Label>Telepon</Label><Input value={phone} onChange={event => setPhone(event.target.value)}/></div><div><Label>Password {user && '(opsional)'}</Label><Input type="password" value={password} onChange={event => setPassword(event.target.value)}/></div><div><Label>Status</Label><Select value={status} onValueChange={setStatus}><SelectTrigger><SelectValue/></SelectTrigger><SelectContent><SelectItem value="active">Aktif</SelectItem><SelectItem value="inactive">Nonaktif</SelectItem></SelectContent></Select></div></div><div><Label className="mb-2 block">Role</Label><div className="flex flex-wrap gap-2">{roles.map((role: any) => <Button type="button" key={role.id} variant={roleIds.includes(role.id) ? 'default' : 'outline'} className="rounded-full" onClick={() => setRoleIds(previous => previous.includes(role.id) ? previous.filter(id => id !== role.id) : [...previous, role.id])}>{role.name}</Button>)}</div></div>{error && <p className="rounded-lg bg-destructive/10 p-3 text-sm text-destructive">{error}</p>}<div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={onClose}>Batal</Button><Button disabled={saving}>{saving ? 'Menyimpan...' : 'Simpan'}</Button></div></form>;
 }

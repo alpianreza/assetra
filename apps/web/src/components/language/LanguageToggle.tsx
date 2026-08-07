@@ -3,14 +3,7 @@ import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMe
 import { useLanguage, type Language } from '@/i18n/LanguageProvider';
 import { cn } from '@/lib/utils';
 
-const languageOptions: Array<{ value: Language; flag: string; shortLabel: string; labelKey: string }> = [
-  { value: 'id', flag: '🇮🇩', shortLabel: 'ID', labelKey: 'language.indonesian' },
-  { value: 'en', flag: '🇬🇧', shortLabel: 'EN', labelKey: 'language.english' },
-];
-
-export function LanguageToggle({ className }: { className?: string }) {
-  const { language, setLanguage, t } = useLanguage();
-  const selected = languageOptions.find(option => option.value === language) ?? languageOptions[0];
-
-  return <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="sm" className={cn('h-9 gap-1.5 px-2', className)} aria-label={t('language.switch')}><span className="text-base leading-none" aria-hidden="true">{selected.flag}</span><span className="text-[11px] font-bold">{selected.shortLabel}</span></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-52"><DropdownMenuLabel>{t('language.label')}</DropdownMenuLabel>{languageOptions.map(option => <DropdownMenuItem key={option.value} onClick={() => setLanguage(option.value)}><span className="mr-2 text-lg leading-none" aria-hidden="true">{option.flag}</span><span className="flex-1">{t(option.labelKey)}</span>{language === option.value && <Check className="h-4 w-4" />}</DropdownMenuItem>)}</DropdownMenuContent></DropdownMenu>;
-}
+function IndonesiaFlag() { return <svg viewBox="0 0 24 16" className="h-4 w-6 overflow-hidden rounded-sm shadow-sm" aria-hidden="true"><path fill="#e70011" d="M0 0h24v8H0z"/><path fill="#fff" d="M0 8h24v8H0z"/></svg>; }
+function EnglishFlag() { return <svg viewBox="0 0 24 16" className="h-4 w-6 overflow-hidden rounded-sm shadow-sm" aria-hidden="true"><path fill="#012169" d="M0 0h24v16H0z"/><path stroke="#fff" strokeWidth="3" d="m0 0 24 16M24 0 0 16"/><path stroke="#c8102e" strokeWidth="1.5" d="m0 0 24 16M24 0 0 16"/><path fill="#fff" d="M10 0h4v16h-4zM0 6h24v4H0z"/><path fill="#c8102e" d="M11 0h2v16h-2zM0 7h24v2H0z"/></svg>; }
+const options: Array<{ value: Language; short: string; labelKey: string; Flag: typeof IndonesiaFlag }> = [{ value: 'id', short: 'ID', labelKey: 'language.indonesian', Flag: IndonesiaFlag }, { value: 'en', short: 'EN', labelKey: 'language.english', Flag: EnglishFlag }];
+export function LanguageToggle({ className }: { className?: string }) { const { language, setLanguage, t } = useLanguage(); const selected = options.find(option => option.value === language) ?? options[0]; const Flag = selected.Flag; return <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="sm" className={cn('h-9 gap-1.5 px-2', className)} aria-label={t('language.switch')}><Flag/><span className="text-[11px] font-bold">{selected.short}</span></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-52"><DropdownMenuLabel>{t('language.label')}</DropdownMenuLabel>{options.map(option => <DropdownMenuItem key={option.value} onClick={() => setLanguage(option.value)}><option.Flag/><span className="ml-2 flex-1">{t(option.labelKey)}</span>{language === option.value && <Check className="h-4 w-4"/>}</DropdownMenuItem>)}</DropdownMenuContent></DropdownMenu>; }
