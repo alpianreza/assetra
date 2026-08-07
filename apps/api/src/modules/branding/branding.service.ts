@@ -10,12 +10,13 @@ export class BrandingService {
     return {
       name: org?.name ?? 'Assetra',
       shortName: org?.shortName ?? 'Assetra',
-      logoUrl: org?.logoPath ? `/api/v1/storage/${org.logoPath}` : null,
-      address: org?.address,
-      phone: org?.phone,
-      email: org?.email,
-      website: org?.website,
-      reportFooter: org?.reportFooter,
+      logoUrl: org?.logoPath ? '/api/v1/settings/organization/logo' : null,
+      logoPath: org?.logoPath ?? null,
+      address: org?.address ?? null,
+      phone: org?.phone ?? null,
+      email: org?.email ?? null,
+      website: org?.website ?? null,
+      reportFooter: org?.reportFooter ?? null,
     };
   }
 }

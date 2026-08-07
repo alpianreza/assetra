@@ -3,6 +3,8 @@ import { DashboardService } from './dashboard.service';
 import { SessionAuthGuard } from '../auth/guards/session-auth.guard';
 import { PermissionsGuard } from '../auth/guards/permissions.guard';
 import { RequirePermissions } from '../auth/decorators/permissions.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { SanitizedUserDto } from '../auth/dto/user-response.dto';
 
 @Controller('dashboard')
 @UseGuards(SessionAuthGuard, PermissionsGuard)
@@ -11,18 +13,22 @@ export class DashboardController {
 
   @Get('summary')
   @RequirePermissions('dashboard.view')
-  async getSummary(@Query('areaId') areaId?: string, @Query('categoryId') categoryId?: string) {
+  async getSummary(
+    @CurrentUser() user: SanitizedUserDto,
+    @Query('areaId') areaId?: string,
+    @Query('categoryId') categoryId?: string,
+    @Query('month') month?: string,
+  ) {
     const filters = {
-      areaId: areaId ? parseInt(areaId) : undefined,
-      categoryId: categoryId ? parseInt(categoryId) : undefined,
+      areaId: areaId ? parseInt(areaId, 10) : undefined,
+      categoryId: categoryId ? parseInt(categoryId, 10) : undefined,
     };
-    return {
-      success: true,
-      data: {
-        summary: await this.dashboardService.getSummary(filters),
-        compliance: await this.dashboardService.getComplianceStatus(filters),
-        breakdowns: await this.dashboardService.getBreakdowns(filters),
-      },
-    };
+    const [summary, compliance, breakdowns, myWork] = await Promise.all([
+      this.dashboardService.getSummary(filters),
+      this.dashboardService.getComplianceStatus(filters),
+      this.dashboardService.getBreakdowns(filters),
+      this.dashboardService.getMyWork(user.id, month),
+    ]);
+    return { success: true, data: { summary, compliance, breakdowns, myWork } };
   }
 }
