@@ -11,6 +11,11 @@ import { SanitizedUserDto } from '../auth/dto/user-response.dto';
 export class DashboardController {
   constructor(private readonly dashboardService: DashboardService) {}
 
+  @Get('home')
+  async getHome(@CurrentUser() user: SanitizedUserDto, @Query('month') month?: string) {
+    return { success: true, data: await this.dashboardService.getMyWork(user.id, month) };
+  }
+
   @Get('summary')
   @RequirePermissions('dashboard.view')
   async getSummary(
