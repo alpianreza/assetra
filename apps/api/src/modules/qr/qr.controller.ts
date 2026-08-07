@@ -6,14 +6,42 @@ import { RequireAnyPermissions, RequirePermissions } from '../auth/decorators/pe
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { SanitizedUserDto } from '../auth/dto/user-response.dto';
 import { QrService } from './qr.service';
-import { BatchQrDto } from './dto/qr.dto';
+import { BatchQrDto, RegenerateQrDto } from './dto/qr.dto';
 
 @Controller('qr')
+@UseGuards(SessionAuthGuard, PermissionsGuard)
 export class QrController {
   constructor(private readonly qrService: QrService) {}
 
+  @Get('gallery')
+  @RequirePermissions('qr.view')
+  async getGallery() {
+    return { success: true, data: await this.qrService.getGallery() };
+  }
+
+  @Post('regenerate')
+  @RequirePermissions('qr.print')
+  async regenerate(
+    @Body() dto: RegenerateQrDto,
+    @CurrentUser() user: SanitizedUserDto,
+  ) {
+    return {
+      success: true,
+      data: await this.qrService.regenerate(dto.inventoryIds, user.id),
+    };
+  }
+
+  @Get('inventory/:inventoryId/stored-image')
+  @RequirePermissions('qr.view')
+  async getStoredQrImage(
+    @Param('inventoryId', ParseIntPipe) inventoryId: number,
+    @Res() res: Response,
+  ) {
+    const filePath = await this.qrService.getStoredQrPath(inventoryId);
+    return res.sendFile(filePath);
+  }
+
   @Get('inventory/:inventoryId')
-  @UseGuards(SessionAuthGuard, PermissionsGuard)
   @RequirePermissions('qr.view')
   async getQrDetail(
     @Param('inventoryId', ParseIntPipe) inventoryId: number,
@@ -24,7 +52,6 @@ export class QrController {
   }
 
   @Get('inventory/:inventoryId/image')
-  @UseGuards(SessionAuthGuard, PermissionsGuard)
   @RequirePermissions('qr.view')
   async getQrImage(
     @Param('inventoryId', ParseIntPipe) inventoryId: number,
@@ -35,12 +62,12 @@ export class QrController {
     res.writeHead(200, {
       'Content-Type': 'image/png',
       'Content-Length': img.length,
+      'Cache-Control': 'no-store',
     });
     res.end(img);
   }
 
   @Get('inventory/:inventoryId/label')
-  @UseGuards(SessionAuthGuard, PermissionsGuard)
   @RequirePermissions('qr.print')
   async getQrLabel(
     @Param('inventoryId', ParseIntPipe) inventoryId: number,
@@ -52,7 +79,6 @@ export class QrController {
   }
 
   @Post('batch')
-  @UseGuards(SessionAuthGuard, PermissionsGuard)
   @RequirePermissions('qr.print')
   async getBatchQr(@Body() dto: BatchQrDto) {
     const data = await this.qrService.getBatchQr(dto.inventoryIds);
@@ -60,10 +86,6 @@ export class QrController {
   }
 }
 
-/**
- * Kept at the existing URL for printed QR compatibility, but it is no longer
- * anonymous: scanning must enter the authenticated, role-aware inventory flow.
- */
 @Controller('public')
 @UseGuards(SessionAuthGuard, PermissionsGuard)
 export class PublicController {

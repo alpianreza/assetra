@@ -7,6 +7,6 @@ import { InventoryMediaService } from './inventory-media.service';
 @Module({
   controllers: [InventoryController],
   providers: [InventoryService, InventoryQrService, InventoryMediaService],
-  exports: [InventoryService],
+  exports: [InventoryService, InventoryQrService],
 })
 export class InventoryModule {}

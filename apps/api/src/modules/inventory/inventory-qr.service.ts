@@ -4,13 +4,12 @@ import * as QRCode from 'qrcode';
 import * as path from 'path';
 import { promises as fs } from 'fs';
 
-/** Generates and stores the permanent QR artifact created with an inventory. */
 @Injectable()
 export class InventoryQrService {
   constructor(private readonly prisma: PrismaService) {}
 
   private getBaseUrl(): string {
-    return process.env.FRONTEND_URL || 'http://localhost:5173';
+    return (process.env.FRONTEND_URL || 'http://localhost:5173').replace(/\/+$/, '');
   }
 
   private escapeXml(value: string): string {
@@ -22,11 +21,6 @@ export class InventoryQrService {
       .replace(/'/g, '&apos;');
   }
 
-  /**
-   * Mirrors EAMS: QR points to the inventory detail entry URL and the asset
-   * code is written in a white box at the centre. SVG keeps this dependency
-   * free while still producing a printable, permanent file.
-   */
   async generateAndStore(inventoryId: number): Promise<string> {
     const inventory = await this.prisma.complianceInventory.findUnique({
       where: { id: inventoryId },
