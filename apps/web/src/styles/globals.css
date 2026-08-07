@@ -3,173 +3,32 @@
 @tailwind utilities;
 
 @layer base {
-  :root {
-    color-scheme: light;
-    --background: 0 0% 100%;
-    --foreground: 222.2 84% 4.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 222.2 84% 4.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 222.2 84% 4.9%;
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --secondary: 210 40% 96.1%;
-    --secondary-foreground: 222.2 47.4% 11.2%;
-    --muted: 210 40% 96.1%;
-    --muted-foreground: 215.4 16.3% 46.9%;
-    --accent: 210 40% 96.1%;
-    --accent-foreground: 222.2 47.4% 11.2%;
-    --destructive: 0 84.2% 60.2%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 214.3 31.8% 91.4%;
-    --input: 214.3 31.8% 91.4%;
-    --ring: 221.2 83.2% 53.3%;
-    --radius: 0.5rem;
-    --sidebar: 222.2 47% 7%;
-    --sidebar-foreground: 210 40% 92%;
-    --sidebar-muted: 215 16% 55%;
-    --sidebar-accent: 217 90% 52%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 222.2 47% 12%;
-  }
-
-  .dark {
-    color-scheme: dark;
-    --background: 222.2 84% 4.9%;
-    --foreground: 210 40% 98%;
-    --card: 222.2 84% 7.5%;
-    --card-foreground: 210 40% 98%;
-    --popover: 222.2 84% 6%;
-    --popover-foreground: 210 40% 98%;
-    --primary: 217.2 91.2% 59.8%;
-    --primary-foreground: 222.2 47.4% 11.2%;
-    --secondary: 217.2 32.6% 17.5%;
-    --secondary-foreground: 210 40% 98%;
-    --muted: 217.2 32.6% 15%;
-    --muted-foreground: 215 20.2% 65.1%;
-    --accent: 217.2 32.6% 17.5%;
-    --accent-foreground: 210 40% 98%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 210 40% 98%;
-    --border: 217.2 32.6% 15%;
-    --input: 217.2 32.6% 17.5%;
-    --ring: 224.3 76.3% 48%;
-    --sidebar: 222.2 47% 5%;
-    --sidebar-foreground: 210 40% 92%;
-    --sidebar-muted: 215 16% 50%;
-    --sidebar-accent: 217 90% 55%;
-    --sidebar-accent-foreground: 210 40% 98%;
-    --sidebar-border: 222.2 47% 10%;
-  }
-
-  [data-accent='blue'] {
-    --primary: 221.2 83.2% 53.3%;
-    --primary-foreground: 210 40% 98%;
-    --ring: 221.2 83.2% 53.3%;
-    --sidebar-accent: 217 90% 52%;
-  }
-  [data-accent='indigo'] {
-    --primary: 243 75% 59%;
-    --primary-foreground: 210 40% 98%;
-    --ring: 243 75% 59%;
-    --sidebar-accent: 243 75% 59%;
-  }
-  [data-accent='violet'] {
-    --primary: 262 83% 58%;
-    --primary-foreground: 210 40% 98%;
-    --ring: 262 83% 58%;
-    --sidebar-accent: 262 83% 58%;
-  }
-  [data-accent='cyan'] {
-    --primary: 189 94% 43%;
-    --primary-foreground: 222 47% 11%;
-    --ring: 189 94% 43%;
-    --sidebar-accent: 189 94% 43%;
-  }
-  [data-accent='emerald'] {
-    --primary: 160 84% 39%;
-    --primary-foreground: 210 40% 98%;
-    --ring: 160 84% 39%;
-    --sidebar-accent: 160 84% 39%;
-  }
-
-  * {
-    @apply border-border;
-  }
-
-  html {
-    min-height: 100%;
-    background: hsl(var(--background));
-  }
-
-  body {
-    @apply min-h-screen bg-background text-foreground antialiased;
-  }
-
-  input,
-  textarea,
-  select {
-    @apply border-input bg-background text-foreground;
-    caret-color: hsl(var(--foreground));
-  }
-
-  input::placeholder,
-  textarea::placeholder {
-    color: hsl(var(--muted-foreground));
-    opacity: 1;
-  }
-
-  input:disabled,
-  input[readonly],
-  textarea:disabled,
-  select:disabled {
-    @apply bg-muted/60 text-muted-foreground;
-  }
-
-  option,
-  optgroup {
-    background-color: hsl(var(--popover));
-    color: hsl(var(--popover-foreground));
-  }
+  :root { color-scheme: light; --background: 0 0% 100%; --foreground: 222.2 84% 4.9%; --card: 0 0% 100%; --card-foreground: 222.2 84% 4.9%; --popover: 0 0% 100%; --popover-foreground: 222.2 84% 4.9%; --primary: 221.2 83.2% 53.3%; --primary-foreground: 210 40% 98%; --secondary: 210 40% 96.1%; --secondary-foreground: 222.2 47.4% 11.2%; --muted: 210 40% 96.1%; --muted-foreground: 215.4 16.3% 46.9%; --accent: 210 40% 96.1%; --accent-foreground: 222.2 47.4% 11.2%; --destructive: 0 84.2% 60.2%; --destructive-foreground: 210 40% 98%; --border: 214.3 31.8% 91.4%; --input: 214.3 31.8% 91.4%; --ring: 221.2 83.2% 53.3%; --radius: 8px; --sidebar: 222.2 47% 7%; --sidebar-foreground: 210 40% 92%; --sidebar-muted: 215 16% 55%; --sidebar-accent: 217 90% 52%; --sidebar-accent-foreground: 210 40% 98%; --sidebar-border: 222.2 47% 12%; }
+  .dark { color-scheme: dark; --background: 222.2 84% 4.9%; --foreground: 210 40% 98%; --card: 222.2 84% 7.5%; --card-foreground: 210 40% 98%; --popover: 222.2 84% 6%; --popover-foreground: 210 40% 98%; --primary: 217.2 91.2% 59.8%; --primary-foreground: 222.2 47.4% 11.2%; --secondary: 217.2 32.6% 17.5%; --secondary-foreground: 210 40% 98%; --muted: 217.2 32.6% 15%; --muted-foreground: 215 20.2% 65.1%; --accent: 217.2 32.6% 17.5%; --accent-foreground: 210 40% 98%; --destructive: 0 62.8% 30.6%; --destructive-foreground: 210 40% 98%; --border: 217.2 32.6% 15%; --input: 217.2 32.6% 17.5%; --ring: 224.3 76.3% 48%; --sidebar: 222.2 47% 5%; --sidebar-foreground: 210 40% 92%; --sidebar-muted: 215 16% 50%; --sidebar-accent: 217 90% 55%; --sidebar-accent-foreground: 210 40% 98%; --sidebar-border: 222.2 47% 10%; }
+  [data-accent='blue'] { --primary: 221.2 83.2% 53.3%; --primary-foreground: 210 40% 98%; --ring: 221.2 83.2% 53.3%; --sidebar-accent: 217 90% 52%; }
+  [data-accent='indigo'] { --primary: 202 100% 36%; --primary-foreground: 210 40% 98%; --ring: 202 100% 36%; --sidebar-accent: 202 100% 36%; }
+  [data-accent='violet'] { --primary: 267 50% 49%; --primary-foreground: 210 40% 98%; --ring: 267 50% 49%; --sidebar-accent: 267 50% 49%; }
+  [data-accent='cyan'] { --primary: 194 89% 34%; --primary-foreground: 210 40% 98%; --ring: 194 89% 34%; --sidebar-accent: 194 89% 34%; }
+  [data-accent='emerald'] { --primary: 182 99% 39%; --primary-foreground: 222 47% 11%; --ring: 182 99% 39%; --sidebar-accent: 182 99% 39%; }
+  * { @apply border-border; }
+  html { min-height: 100%; background: hsl(var(--background)); }
+  body { @apply min-h-screen bg-background text-foreground antialiased; }
+  input, textarea, select { @apply border-input bg-background text-foreground; caret-color: hsl(var(--foreground)); }
+  input::placeholder, textarea::placeholder { color: hsl(var(--muted-foreground)); opacity: 1; }
+  input:disabled, input[readonly], textarea:disabled, select:disabled { @apply bg-muted/60 text-muted-foreground; }
+  option, optgroup { background-color: hsl(var(--popover)); color: hsl(var(--popover-foreground)); }
 }
+
+[data-card-style='border'] .theme-card { box-shadow: none !important; }
+[data-card-style='shadow'] .theme-card { border-color: transparent !important; box-shadow: 0 12px 32px hsl(var(--foreground) / 0.09) !important; }
+[dir='rtl'] .lucide-arrow-right, [dir='rtl'] .lucide-chevron-right { transform: scaleX(-1); }
 
 @layer utilities {
-  .scrollbar-thin {
-    scrollbar-width: thin;
-  }
-  .scrollbar-thin::-webkit-scrollbar {
-    width: 6px;
-    height: 6px;
-  }
-  .scrollbar-thin::-webkit-scrollbar-thumb {
-    border-radius: 9999px;
-    background-color: hsl(var(--muted-foreground) / 0.3);
-  }
-
-  /* Older pages still use bg-white directly. Keep their form fields readable
-     in dark mode until every page has moved to semantic theme tokens. */
-  .dark input.bg-white,
-  .dark textarea.bg-white,
-  .dark select.bg-white {
-    background-color: hsl(var(--background)) !important;
-    color: hsl(var(--foreground)) !important;
-  }
-
-  .dark .bg-white:not(img) {
-    background-color: hsl(var(--card)) !important;
-  }
+  .scrollbar-thin { scrollbar-width: thin; }
+  .scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+  .scrollbar-thin::-webkit-scrollbar-thumb { border-radius: 9999px; background-color: hsl(var(--muted-foreground) / 0.3); }
+  .dark input.bg-white, .dark textarea.bg-white, .dark select.bg-white { background-color: hsl(var(--background)) !important; color: hsl(var(--foreground)) !important; }
+  .dark .bg-white:not(img) { background-color: hsl(var(--card)) !important; }
 }
-
-input:-webkit-autofill,
-input:-webkit-autofill:hover,
-input:-webkit-autofill:focus {
-  -webkit-text-fill-color: hsl(var(--foreground));
-  caret-color: hsl(var(--foreground));
-  box-shadow: 0 0 0 1000px hsl(var(--background)) inset;
-  transition: background-color 9999s ease-out 0s;
-}
-
-::selection {
-  background-color: hsl(var(--primary) / 0.28);
-  color: hsl(var(--foreground));
-}
+input:-webkit-autofill, input:-webkit-autofill:hover, input:-webkit-autofill:focus { -webkit-text-fill-color: hsl(var(--foreground)); caret-color: hsl(var(--foreground)); box-shadow: 0 0 0 1000px hsl(var(--background)) inset; transition: background-color 9999s ease-out 0s; }
+::selection { background-color: hsl(var(--primary) / 0.28); color: hsl(var(--foreground)); }

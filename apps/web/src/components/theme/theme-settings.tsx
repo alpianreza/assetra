@@ -1,82 +1,42 @@
-import { useTheme, type ThemeMode, type AccentName } from './theme-provider';
+import { useTheme, type ThemeMode, type AccentName, type ThemeDirection, type LayoutType, type ContainerMode, type SidebarMode, type CardStyle } from './theme-provider';
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { useLanguage } from '@/i18n/LanguageProvider';
 import { cn } from '@/lib/utils';
-import { Check } from 'lucide-react';
+import { Check, ChevronLeft, ChevronRight, Maximize2, Monitor, Moon, PanelLeft, PanelLeftClose, PanelTop, Palette, RotateCcw, Rows3, Square, Sun } from 'lucide-react';
 
-const APPEARANCE: { value: ThemeMode; label: string }[] = [
-  { value: 'light', label: 'Light' },
-  { value: 'dark', label: 'Dark' },
-  { value: 'system', label: 'System' },
+const ACCENTS: { value: Exclude<AccentName, 'custom'>; color: string }[] = [
+  { value: 'blue', color: '#5d87ff' }, { value: 'indigo', color: '#0074ba' }, { value: 'violet', color: '#763ebd' }, { value: 'cyan', color: '#0a7ea4' }, { value: 'emerald', color: '#01c0c8' },
 ];
 
-const ACCENTS: { value: AccentName; label: string; color: string }[] = [
-  { value: 'blue', label: 'Blue', color: '#3b82f6' },
-  { value: 'indigo', label: 'Indigo', color: '#6366f1' },
-  { value: 'violet', label: 'Violet', color: '#8b5cf6' },
-  { value: 'cyan', label: 'Cyan', color: '#06b6d4' },
-  { value: 'emerald', label: 'Emerald', color: '#10b981' },
-];
+function OptionButton({ active, onClick, icon: Icon, children }: { active: boolean; onClick: () => void; icon: typeof Sun; children: React.ReactNode }) {
+  return <button type="button" onClick={onClick} className={cn('flex min-h-14 items-center justify-center gap-2 rounded-xl border px-4 py-3 text-sm font-medium transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/60 hover:text-primary hover:shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring', active ? 'border-primary bg-primary/10 text-primary shadow-sm' : 'border-border bg-background text-muted-foreground')}><Icon className="h-5 w-5" />{children}{active && <Check className="h-3.5 w-3.5" />}</button>;
+}
+function Section({ title, children }: { title: string; children: React.ReactNode }) { return <section><h4 className="mb-3 text-sm font-semibold text-foreground">{title}</h4>{children}</section>; }
 
 export function ThemeSettingsDrawer({ open, onClose }: { open: boolean; onClose: () => void }) {
-  const { mode, accent, setMode, setAccent } = useTheme();
+  const theme = useTheme();
+  const { language } = useLanguage();
+  const id = language === 'id';
+  const text = {
+    title: id ? 'Tampilan' : 'Appearance', description: id ? 'Sesuaikan tampilan Assetra secara langsung.' : 'Customize Assetra in real time.', theme: id ? 'Mode Tema' : 'Theme Option', direction: id ? 'Arah Tema' : 'Theme Direction', colors: id ? 'Warna Tema' : 'Theme Colors', custom: id ? 'Pilih Warna Sendiri' : 'Choose Your Theme Colors', primary: id ? 'Warna utama' : 'Primary color', secondary: id ? 'Warna sekunder' : 'Secondary color', layout: id ? 'Tipe Layout' : 'Layout Type', container: id ? 'Opsi Kontainer' : 'Container Option', sidebar: id ? 'Tipe Sidebar' : 'Sidebar Type', card: id ? 'Tampilan Kartu' : 'Card Style', radius: id ? 'Radius Sudut Tema' : 'Theme Border Radius', current: id ? 'Nilai saat ini' : 'Current value', reset: id ? 'Atur ulang' : 'Reset settings', system: id ? 'Sistem' : 'System', border: id ? 'Garis tepi' : 'Border', shadow: id ? 'Bayangan' : 'Shadow', full: id ? 'Penuh' : 'Full', collapse: id ? 'Ringkas' : 'Collapse', vertical: id ? 'Vertikal' : 'Vertical', horizontal: id ? 'Horizontal' : 'Horizontal', boxed: id ? 'Terbatas' : 'Boxed',
+  };
+  const modes: { value: ThemeMode; label: string; icon: typeof Sun }[] = [{ value: 'light', label: 'Light', icon: Sun }, { value: 'dark', label: 'Dark', icon: Moon }, { value: 'system', label: text.system, icon: Monitor }];
+  const directions: { value: ThemeDirection; label: string; icon: typeof Sun }[] = [{ value: 'ltr', label: 'LTR', icon: ChevronRight }, { value: 'rtl', label: 'RTL', icon: ChevronLeft }];
+  const layouts: { value: LayoutType; label: string; icon: typeof Sun }[] = [{ value: 'vertical', label: text.vertical, icon: PanelLeft }, { value: 'horizontal', label: text.horizontal, icon: PanelTop }];
+  const containers: { value: ContainerMode; label: string; icon: typeof Sun }[] = [{ value: 'boxed', label: text.boxed, icon: Square }, { value: 'full', label: text.full, icon: Maximize2 }];
+  const sidebars: { value: SidebarMode; label: string; icon: typeof Sun }[] = [{ value: 'full', label: text.full, icon: PanelLeft }, { value: 'collapse', label: text.collapse, icon: PanelLeftClose }];
+  const cards: { value: CardStyle; label: string; icon: typeof Sun }[] = [{ value: 'border', label: text.border, icon: Rows3 }, { value: 'shadow', label: text.shadow, icon: Square }];
 
-  return (
-    <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent className="overflow-y-auto">
-        <SheetHeader>
-          <SheetTitle>Appearance</SheetTitle>
-          <SheetDescription>Customize the look of Assetra.</SheetDescription>
-        </SheetHeader>
-
-        <div className="mt-6 space-y-8">
-          {/* Appearance mode */}
-          <div>
-            <h4 className="mb-3 text-sm font-medium text-foreground">Appearance</h4>
-            <div className="grid grid-cols-3 gap-2">
-              {APPEARANCE.map((a) => (
-                <button
-                  key={a.value}
-                  onClick={() => setMode(a.value)}
-                  className={cn(
-                    'flex flex-col items-center gap-2 rounded-lg border p-4 text-sm font-medium transition-colors',
-                    mode === a.value
-                      ? 'border-primary bg-primary/10 text-primary'
-                      : 'border-border text-muted-foreground hover:bg-accent',
-                  )}
-                >
-                  <span>{a.label}</span>
-                  {mode === a.value && <Check className="h-4 w-4" />}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Accent color */}
-          <div>
-            <h4 className="mb-3 text-sm font-medium text-foreground">Theme Color</h4>
-            <div className="flex flex-wrap gap-3">
-              {ACCENTS.map((a) => (
-                <button
-                  key={a.value}
-                  onClick={() => setAccent(a.value)}
-                  aria-label={a.label}
-                  title={a.label}
-                  className={cn(
-                    'flex h-10 w-10 items-center justify-center rounded-full ring-offset-background transition-all',
-                    accent === a.value && 'ring-2 ring-ring ring-offset-2',
-                  )}
-                  style={{ backgroundColor: a.color }}
-                >
-                  {accent === a.value && <Check className="h-4 w-4 text-white" />}
-                </button>
-              ))}
-            </div>
-            <p className="mt-3 text-xs text-muted-foreground">
-              Accent applied globally via CSS theme tokens.
-            </p>
-          </div>
-        </div>
-      </SheetContent>
-    </Sheet>
-  );
+  return <Sheet open={open} onOpenChange={value => !value && onClose()}><SheetContent className="w-[94vw] overflow-y-auto sm:max-w-[480px]"><SheetHeader><SheetTitle>{text.title}</SheetTitle><SheetDescription>{text.description}</SheetDescription></SheetHeader><div className="mt-7 space-y-8 pb-8">
+    <Section title={text.theme}><div className="grid grid-cols-3 gap-2">{modes.map(option => <OptionButton key={option.value} active={theme.mode === option.value} onClick={() => theme.setMode(option.value)} icon={option.icon}>{option.label}</OptionButton>)}</div></Section>
+    <Section title={text.direction}><div className="grid grid-cols-2 gap-3">{directions.map(option => <OptionButton key={option.value} active={theme.direction === option.value} onClick={() => theme.setDirection(option.value)} icon={option.icon}>{option.label}</OptionButton>)}</div></Section>
+    <Section title={text.colors}><div className="grid grid-cols-5 gap-2">{ACCENTS.map(option => <button type="button" key={option.value} onClick={() => theme.setAccent(option.value)} aria-label={option.value} className={cn('flex h-14 items-center justify-center rounded-xl border bg-background transition-all hover:-translate-y-0.5 hover:shadow-md', theme.accent === option.value && 'border-primary ring-2 ring-primary/30')}><span className="flex h-7 w-7 items-center justify-center rounded-full" style={{ backgroundColor: option.color }}>{theme.accent === option.value && <Check className="h-4 w-4 text-white" />}</span></button>)}</div></Section>
+    <Section title={text.custom}><div className="grid grid-cols-2 gap-3"><label className={cn('relative flex cursor-pointer items-center gap-3 rounded-xl border bg-background p-4 transition hover:border-primary/60', theme.accent === 'custom' && 'border-primary')}><input type="color" value={theme.customPrimary} onChange={event => theme.setCustomPrimary(event.target.value)} className="absolute inset-0 cursor-pointer opacity-0" aria-label={text.primary} /><span className="h-8 w-8 shrink-0 rounded-full border" style={{ backgroundColor: theme.customPrimary }} /><span className="min-w-0"><span className="block truncate text-xs font-medium">{text.primary}</span><span className="font-mono text-[10px] text-muted-foreground">{theme.customPrimary}</span></span><Palette className="ml-auto h-4 w-4" /></label><label className={cn('relative flex cursor-pointer items-center gap-3 rounded-xl border bg-background p-4 transition hover:border-primary/60', theme.accent === 'custom' && 'border-primary')}><input type="color" value={theme.customSecondary} onChange={event => theme.setCustomSecondary(event.target.value)} className="absolute inset-0 cursor-pointer opacity-0" aria-label={text.secondary} /><span className="h-8 w-8 shrink-0 rounded-full border" style={{ backgroundColor: theme.customSecondary }} /><span className="min-w-0"><span className="block truncate text-xs font-medium">{text.secondary}</span><span className="font-mono text-[10px] text-muted-foreground">{theme.customSecondary}</span></span><Palette className="ml-auto h-4 w-4" /></label></div></Section>
+    <Section title={text.layout}><div className="grid grid-cols-2 gap-3">{layouts.map(option => <OptionButton key={option.value} active={theme.layout === option.value} onClick={() => theme.setLayout(option.value)} icon={option.icon}>{option.label}</OptionButton>)}</div></Section>
+    <Section title={text.container}><div className="grid grid-cols-2 gap-3">{containers.map(option => <OptionButton key={option.value} active={theme.container === option.value} onClick={() => theme.setContainer(option.value)} icon={option.icon}>{option.label}</OptionButton>)}</div></Section>
+    <Section title={text.sidebar}><div className="grid grid-cols-2 gap-3">{sidebars.map(option => <OptionButton key={option.value} active={theme.sidebarMode === option.value} onClick={() => theme.setSidebarMode(option.value)} icon={option.icon}>{option.label}</OptionButton>)}</div></Section>
+    <Section title={text.card}><div className="grid grid-cols-2 gap-3">{cards.map(option => <OptionButton key={option.value} active={theme.cardStyle === option.value} onClick={() => theme.setCardStyle(option.value)} icon={option.icon}>{option.label}</OptionButton>)}</div></Section>
+    <Section title={text.radius}><input type="range" min={4} max={24} step={1} value={theme.radius} onChange={event => theme.setRadius(Number(event.target.value))} className="h-2 w-full cursor-pointer accent-primary" /><div className="mt-2 flex justify-between text-xs text-muted-foreground"><span>4px</span><strong className="text-primary">{text.current}: {theme.radius}px</strong><span>24px</span></div></Section>
+    <button type="button" onClick={theme.resetTheme} className="flex w-full items-center justify-center gap-2 rounded-xl border py-3 text-sm font-medium text-muted-foreground transition hover:border-primary hover:text-primary"><RotateCcw className="h-4 w-4" />{text.reset}</button>
+  </div></SheetContent></Sheet>;
 }

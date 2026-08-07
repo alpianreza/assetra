@@ -9,23 +9,15 @@
     <script>
       (function () {
         try {
+          var root = document.documentElement;
           var mode = localStorage.getItem('assetra-theme') || 'system';
           var accent = localStorage.getItem('assetra-accent') || 'blue';
-          var dark = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches);
-          var resolved = dark ? 'dark' : 'light';
-          var root = document.documentElement;
-          root.classList.add(resolved);
-          root.dataset.theme = resolved;
-          root.dataset.accent = accent;
-          root.style.colorScheme = resolved;
-        } catch (_) {
-          document.documentElement.classList.add('light');
-        }
+          var resolved = mode === 'dark' || (mode === 'system' && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light';
+          var radius = Math.min(24, Math.max(4, Number(localStorage.getItem('assetra-radius')) || 8));
+          root.classList.add(resolved); root.dataset.theme = resolved; root.dataset.accent = accent; root.dataset.direction = localStorage.getItem('assetra-direction') || 'ltr'; root.dataset.layout = localStorage.getItem('assetra-layout') || 'vertical'; root.dataset.container = localStorage.getItem('assetra-container') || 'full'; root.dataset.sidebar = localStorage.getItem('assetra-sidebar') === 'collapse' || localStorage.getItem('assetra-sidebar') === 'collapsed' ? 'collapse' : 'full'; root.dataset.cardStyle = localStorage.getItem('assetra-card-style') || 'border'; root.dir = root.dataset.direction; root.style.colorScheme = resolved; root.style.setProperty('--radius', radius + 'px');
+        } catch (_) { document.documentElement.classList.add('light'); }
       })();
     </script>
   </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+  <body><div id="root"></div><script type="module" src="/src/main.tsx"></script></body>
 </html>
