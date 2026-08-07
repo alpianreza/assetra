@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useDashboardSummary } from '@/features/dashboard';
 import { useAuth } from '@/features/auth/useAuth';
@@ -275,14 +275,14 @@ export function DashboardPage() {
   const byCategory = Object.entries(data?.data.breakdowns.byCategory ?? {}).sort((a, b) => b[1] - a[1]).slice(0, 6);
   const total = Math.max(1, summary?.total ?? 0);
 
-  const cards = useMemo<SlideMetric[]>(() => [
+  const cards: SlideMetric[] = [
     { label: 'Total Inventaris', value: summary?.total ?? 0, note: 'Seluruh aset terdaftar', icon: Boxes, tone: 'bg-blue-500/15 dark:bg-blue-400/15', text: 'text-blue-600 dark:text-blue-300', iconTone: 'bg-blue-500/15 text-blue-600 dark:text-blue-300', href: '/inventory' },
     { label: 'Aset Aktif', value: summary?.active ?? 0, note: 'Aset operasional', icon: Activity, tone: 'bg-emerald-500/15 dark:bg-emerald-400/15', text: 'text-emerald-600 dark:text-emerald-300', iconTone: 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-300', href: '/inventory' },
     { label: 'Maintenance', value: summary?.maintenance ?? 0, note: 'Dalam perbaikan', icon: Wrench, tone: 'bg-amber-500/15 dark:bg-amber-400/15', text: 'text-amber-600 dark:text-amber-300', iconTone: 'bg-amber-500/15 text-amber-600 dark:text-amber-300', href: '/inventory' },
     { label: 'Checklist Selesai', value: compliance?.completed ?? 0, note: 'Jawaban sesuai', icon: CheckCircle2, tone: 'bg-cyan-500/15 dark:bg-cyan-400/15', text: 'text-cyan-600 dark:text-cyan-300', iconTone: 'bg-cyan-500/15 text-cyan-600 dark:text-cyan-300', href: '/compliance' },
     { label: 'Temuan', value: compliance?.late ?? 0, note: 'Jawaban tidak sesuai', icon: CircleAlert, tone: 'bg-rose-500/15 dark:bg-rose-400/15', text: 'text-rose-600 dark:text-rose-300', iconTone: 'bg-rose-500/15 text-rose-600 dark:text-rose-300', href: '/dashboard' },
     { label: 'Belum Checklist', value: work?.pending ?? 0, note: 'Kewajiban pengguna', icon: Clock3, tone: 'bg-violet-500/15 dark:bg-violet-400/15', text: 'text-violet-600 dark:text-violet-300', iconTone: 'bg-violet-500/15 text-violet-600 dark:text-violet-300', href: '/' },
-  ], [summary, compliance, work]);
+  ];
 
   return (
     <div className="space-y-6">
