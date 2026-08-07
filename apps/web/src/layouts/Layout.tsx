@@ -5,42 +5,44 @@ import { logout } from '@/features/auth/api';
 import { queryClient } from '@/app/queryClient';
 import { AUTH_QUERY_KEY } from '@/features/auth/constants';
 import { useAuth } from '@/features/auth/useAuth';
+import { useLanguage } from '@/i18n/LanguageProvider';
+import { LanguageToggle } from '@/components/language/LanguageToggle';
 import { cn } from '@/lib/utils';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { ThemeSettingsDrawer } from '@/components/theme/theme-settings';
 import { Button, DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger, TooltipProvider } from '@/components/ui';
 import { BarChart3, Bell, Boxes, Building2, CalendarDays, ChevronLeft, ClipboardCheck, Clock, Database, FileText, Home, LogOut, Menu, Printer, QrCode, Settings, ShieldCheck, Users, type LucideIcon } from 'lucide-react';
 
-interface NavItem { path: string; label: string; icon: LucideIcon; permissions: string[] }
-interface NavGroup { title: string; items: NavItem[] }
+interface NavItem { path: string; labelKey: string; icon: LucideIcon; permissions: string[] }
+interface NavGroup { titleKey: string; items: NavItem[] }
 
 const NAV_GROUPS: NavGroup[] = [
-  { title: 'Home', items: [
-    { path: '/', label: 'Home', icon: Home, permissions: [] },
-    { path: '/dashboard', label: 'Dashboard', icon: BarChart3, permissions: ['dashboard.view'] },
+  { titleKey: 'nav.homeGroup', items: [
+    { path: '/', labelKey: 'nav.home', icon: Home, permissions: [] },
+    { path: '/dashboard', labelKey: 'nav.dashboard', icon: BarChart3, permissions: ['dashboard.view'] },
   ] },
-  { title: 'Operasional', items: [
-    { path: '/inventory', label: 'Inventaris', icon: Boxes, permissions: ['inventory.view'] },
-    { path: '/compliance', label: 'Pelaksanaan Checklist', icon: ClipboardCheck, permissions: ['compliance.view', 'compliance.execute'] },
+  { titleKey: 'nav.operations', items: [
+    { path: '/inventory', labelKey: 'nav.inventory', icon: Boxes, permissions: ['inventory.view'] },
+    { path: '/compliance', labelKey: 'nav.execution', icon: ClipboardCheck, permissions: ['compliance.view', 'compliance.execute'] },
   ] },
-  { title: 'Compliance', items: [
-    { path: '/checklist/templates', label: 'Checklist Master', icon: FileText, permissions: ['checklist_template.view'] },
-    { path: '/checklist/sessions', label: 'Sesi Checklist', icon: Clock, permissions: ['checklist_session.view'] },
+  { titleKey: 'nav.compliance', items: [
+    { path: '/checklist/templates', labelKey: 'nav.checklistMaster', icon: FileText, permissions: ['checklist_template.view'] },
+    { path: '/checklist/sessions', labelKey: 'nav.sessions', icon: Clock, permissions: ['checklist_session.view'] },
   ] },
-  { title: 'Data', items: [
-    { path: '/master-data', label: 'Master Data', icon: Database, permissions: ['master.area.view', 'master.category.view', 'master.item_type.view', 'master.area.manage', 'master.category.manage', 'master.item_type.manage'] },
+  { titleKey: 'nav.data', items: [
+    { path: '/master-data', labelKey: 'nav.masterData', icon: Database, permissions: ['master.area.view', 'master.category.view', 'master.item_type.view', 'master.area.manage', 'master.category.manage', 'master.item_type.manage'] },
   ] },
-  { title: 'Reporting', items: [
-    { path: '/qr', label: 'QR Center', icon: QrCode, permissions: ['qr.view'] },
-    { path: '/reports', label: 'Print Center', icon: Printer, permissions: ['reports.view'] },
+  { titleKey: 'nav.reporting', items: [
+    { path: '/qr', labelKey: 'nav.qrCenter', icon: QrCode, permissions: ['qr.view'] },
+    { path: '/reports', labelKey: 'nav.printCenter', icon: Printer, permissions: ['reports.view'] },
   ] },
-  { title: 'Administration', items: [
-    { path: '/users', label: 'Pengguna', icon: Users, permissions: ['users.view'] },
-    { path: '/roles', label: 'Role & Permission', icon: ShieldCheck, permissions: ['roles.view'] },
+  { titleKey: 'nav.administration', items: [
+    { path: '/users', labelKey: 'nav.users', icon: Users, permissions: ['users.view'] },
+    { path: '/roles', labelKey: 'nav.roles', icon: ShieldCheck, permissions: ['roles.view'] },
   ] },
-  { title: 'Settings', items: [
-    { path: '/settings', label: 'Hari Kerja & Libur', icon: CalendarDays, permissions: ['settings.working_day.manage', 'settings.holiday.manage'] },
-    { path: '/settings/organization', label: 'Organisasi', icon: Building2, permissions: ['settings.organization.view'] },
+  { titleKey: 'nav.settings', items: [
+    { path: '/settings', labelKey: 'nav.workdays', icon: CalendarDays, permissions: ['settings.working_day.manage', 'settings.holiday.manage'] },
+    { path: '/settings/organization', labelKey: 'nav.organization', icon: Building2, permissions: ['settings.organization.view'] },
   ] },
 ];
 
@@ -48,6 +50,7 @@ export function Layout() {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, hasPermission } = useAuth();
+  const { t } = useLanguage();
   const [collapsed, setCollapsed] = React.useState(() => typeof window !== 'undefined' && localStorage.getItem('assetra-sidebar') === 'collapsed');
   const [mobileOpen, setMobileOpen] = React.useState(false);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
@@ -56,28 +59,19 @@ export function Layout() {
   const visibleGroups = NAV_GROUPS.map(group => ({ ...group, items: group.items.filter(item => item.permissions.length === 0 || item.permissions.some(hasPermission)) })).filter(group => group.items.length);
   const currentItem = NAV_GROUPS.flatMap(group => group.items).find(item => isActive(item.path));
   const initials = user?.name ? user.name.split(' ').map(part => part[0]).filter(Boolean).slice(0, 2).join('').toUpperCase() : 'A';
-  const primaryRole = user?.roles?.[0] ?? 'User';
+  const primaryRole = user?.roles?.[0] ?? t('common.user');
 
   React.useEffect(() => setMobileOpen(false), [location.pathname]);
   const toggleCollapsed = () => setCollapsed(previous => { const next = !previous; localStorage.setItem('assetra-sidebar', next ? 'collapsed' : 'expanded'); return next; });
 
   const renderSidebar = (compact: boolean, onNavigate?: () => void) => <div className={cn('flex h-full flex-col overflow-hidden text-sidebar-foreground transition-[width] duration-300 ease-in-out', compact ? 'w-[78px]' : 'w-[260px]')}>
-    <div className={cn('flex h-[72px] shrink-0 items-center gap-3 border-b border-white/10 px-4', compact && 'justify-center px-2')}>
-      <span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 via-violet-500 to-cyan-400 shadow-lg shadow-blue-950/40"><span className="h-4 w-4 rounded-full bg-sidebar" /></span>
-      <div className={cn('overflow-hidden whitespace-nowrap transition-all duration-200', compact ? 'max-w-0 -translate-x-2 opacity-0' : 'max-w-48 opacity-100')}><p className="text-lg font-bold tracking-tight text-white">Assetra</p><p className="text-[10px] uppercase tracking-[0.18em] text-sidebar-muted">Compliance suite</p></div>
-    </div>
-
-    <nav className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"><div className="space-y-6">{visibleGroups.map(group => <section key={group.title}><p className={cn('mb-2 overflow-hidden whitespace-nowrap px-3 text-[10px] font-bold uppercase tracking-[0.14em] text-sidebar-muted transition-all', compact ? 'max-h-0 opacity-0' : 'max-h-5 opacity-100')}>{group.title}</p><div className="space-y-1">{group.items.map(item => { const Icon = item.icon; const active = isActive(item.path); return <Link key={item.path} to={item.path} onClick={onNavigate} title={compact ? item.label : undefined} className={cn('group flex h-10 items-center gap-3 rounded-lg text-sm font-medium transition-all duration-200', compact ? 'justify-center px-0' : 'px-3', active ? 'bg-sidebar-accent text-white shadow-lg shadow-blue-950/30' : 'text-sidebar-muted hover:bg-white/5 hover:text-white')}><Icon className={cn('h-[18px] w-[18px] shrink-0 transition-transform group-hover:scale-110', active && 'text-white')} /><span className={cn('overflow-hidden whitespace-nowrap transition-all duration-200', compact ? 'max-w-0 -translate-x-2 opacity-0' : 'max-w-48 opacity-100')}>{item.label}</span></Link>; })}</div></section>)}</div></nav>
-
-    <div className="shrink-0 border-t border-white/10 p-2"><div className={cn('flex items-center rounded-xl bg-white/[0.07] p-2', compact ? 'justify-center' : 'gap-3')}><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-cyan-400 text-xs font-bold text-white">{initials}</span><div className={cn('min-w-0 flex-1 overflow-hidden whitespace-nowrap transition-all', compact ? 'max-w-0 opacity-0' : 'max-w-36 opacity-100')}><p className="truncate text-xs font-semibold text-white">{user?.name ?? 'User'}</p><p className="truncate text-[10px] text-sidebar-muted">{primaryRole}</p></div>{!compact && <button type="button" onClick={() => logoutMutation.mutate()} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sidebar-muted transition-colors hover:bg-white/10 hover:text-white" aria-label="Keluar"><LogOut className="h-4 w-4" /></button>}</div></div>
+    <div className={cn('flex h-[72px] shrink-0 items-center gap-3 border-b border-white/10 px-4', compact && 'justify-center px-2')}><span className="relative flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 via-violet-500 to-cyan-400 shadow-lg shadow-blue-950/40"><span className="h-4 w-4 rounded-full bg-sidebar" /></span><div className={cn('overflow-hidden whitespace-nowrap transition-all duration-200', compact ? 'max-w-0 -translate-x-2 opacity-0' : 'max-w-48 opacity-100')}><p className="text-lg font-bold tracking-tight text-white">Assetra</p><p className="text-[10px] uppercase tracking-[0.18em] text-sidebar-muted">Compliance suite</p></div></div>
+    <nav className="flex-1 overflow-y-auto overflow-x-hidden px-3 py-5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"><div className="space-y-6">{visibleGroups.map(group => <section key={group.titleKey}><p className={cn('mb-2 overflow-hidden whitespace-nowrap px-3 text-[10px] font-bold uppercase tracking-[0.14em] text-sidebar-muted transition-all', compact ? 'max-h-0 opacity-0' : 'max-h-5 opacity-100')}>{t(group.titleKey)}</p><div className="space-y-1">{group.items.map(item => { const Icon = item.icon; const active = isActive(item.path); const label = t(item.labelKey); return <Link key={item.path} to={item.path} onClick={onNavigate} title={compact ? label : undefined} className={cn('group flex h-10 items-center gap-3 rounded-lg text-sm font-medium transition-all duration-200', compact ? 'justify-center px-0' : 'px-3', active ? 'bg-sidebar-accent text-white shadow-lg shadow-blue-950/30' : 'text-sidebar-muted hover:bg-white/5 hover:text-white')}><Icon className={cn('h-[18px] w-[18px] shrink-0 transition-transform group-hover:scale-110', active && 'text-white')} /><span className={cn('overflow-hidden whitespace-nowrap transition-all duration-200', compact ? 'max-w-0 -translate-x-2 opacity-0' : 'max-w-48 opacity-100')}>{label}</span></Link>; })}</div></section>)}</div></nav>
+    <div className="shrink-0 border-t border-white/10 p-2"><div className={cn('flex items-center rounded-xl bg-white/[0.07] p-2', compact ? 'justify-center' : 'gap-3')}><span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-cyan-400 text-xs font-bold text-white">{initials}</span><div className={cn('min-w-0 flex-1 overflow-hidden whitespace-nowrap transition-all', compact ? 'max-w-0 opacity-0' : 'max-w-36 opacity-100')}><p className="truncate text-xs font-semibold text-white">{user?.name ?? t('common.user')}</p><p className="truncate text-[10px] text-sidebar-muted">{primaryRole}</p></div>{!compact && <button type="button" onClick={() => logoutMutation.mutate()} className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-sidebar-muted transition-colors hover:bg-white/10 hover:text-white" aria-label={t('common.logout')}><LogOut className="h-4 w-4" /></button>}</div></div>
   </div>;
 
-  return <TooltipProvider delayDuration={200}><div className="flex min-h-screen bg-background">
-    <aside className={cn('sticky top-0 hidden h-screen shrink-0 overflow-hidden bg-sidebar transition-[width] duration-300 ease-in-out lg:block', collapsed ? 'w-[78px]' : 'w-[260px]')}>{renderSidebar(collapsed)}</aside>
-    <div className={cn('fixed inset-0 z-50 transition-[visibility] duration-300 lg:hidden', mobileOpen ? 'visible' : 'invisible pointer-events-none')}><div className={cn('absolute inset-0 bg-black/65 backdrop-blur-sm transition-opacity duration-300', mobileOpen ? 'opacity-100' : 'opacity-0')} onClick={() => setMobileOpen(false)} /><aside className={cn('absolute left-0 top-0 h-full w-[260px] bg-sidebar shadow-2xl transition-transform duration-300 ease-out', mobileOpen ? 'translate-x-0' : '-translate-x-full')}>{renderSidebar(false, () => setMobileOpen(false))}</aside></div>
-
-    <div className="flex min-w-0 flex-1 flex-col"><header className="sticky top-0 z-30 flex h-[72px] items-center justify-between border-b bg-background/90 px-4 backdrop-blur-xl sm:px-6"><div className="flex min-w-0 items-center gap-3"><Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileOpen(true)}><Menu className="h-5 w-5" /></Button><Button variant="ghost" size="icon" className="hidden lg:inline-flex" onClick={toggleCollapsed}><ChevronLeft className={cn('h-5 w-5 transition-transform duration-300', collapsed && 'rotate-180')} /></Button><div className="min-w-0"><p className="truncate text-sm font-semibold sm:text-base">{currentItem?.label ?? 'Home'}</p><p className="hidden text-xs text-muted-foreground sm:block">{primaryRole}</p></div><div className="ml-5 hidden items-center gap-1 border-l pl-5 xl:flex"><Link to="/" className={cn('rounded-lg px-3 py-2 text-xs font-medium transition-colors', location.pathname === '/' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}>Home</Link>{hasPermission('dashboard.view') && <Link to="/dashboard" className={cn('rounded-lg px-3 py-2 text-xs font-medium transition-colors', location.pathname === '/dashboard' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}>Dashboard</Link>}</div></div>
-      <div className="flex items-center gap-1"><Button variant="ghost" size="icon" className="relative"><Bell className="h-4 w-4" /><span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-primary" /></Button><ThemeToggle /><Button variant="ghost" size="icon" onClick={() => setSettingsOpen(true)}><Settings className="h-4 w-4" /></Button><DropdownMenu><DropdownMenuTrigger asChild><button className="ml-1 flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-primary to-cyan-400 text-xs font-bold text-white shadow-sm">{initials}</button></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-56"><DropdownMenuLabel><p>{user?.name ?? 'User'}</p><p className="mt-0.5 text-xs font-normal text-muted-foreground">{user?.email ?? primaryRole}</p></DropdownMenuLabel><DropdownMenuSeparator />{hasPermission('settings.organization.view') && <DropdownMenuItem onClick={() => navigate('/settings/organization')}><Building2 className="mr-2 h-4 w-4" />Organisasi</DropdownMenuItem>}<DropdownMenuItem onClick={() => setSettingsOpen(true)}><Settings className="mr-2 h-4 w-4" />Tampilan</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem onClick={() => logoutMutation.mutate()} className="text-destructive"><LogOut className="mr-2 h-4 w-4" />Keluar</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div>
-    </header><main className="flex-1 p-4 sm:p-6 lg:p-8"><div className="mx-auto max-w-[1500px]"><Outlet /></div></main></div><ThemeSettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} />
-  </div></TooltipProvider>;
+  return <TooltipProvider delayDuration={200}><div className="flex min-h-screen bg-background"><aside className={cn('sticky top-0 hidden h-screen shrink-0 overflow-hidden bg-sidebar transition-[width] duration-300 ease-in-out lg:block', collapsed ? 'w-[78px]' : 'w-[260px]')}>{renderSidebar(collapsed)}</aside><div className={cn('fixed inset-0 z-50 transition-[visibility] duration-300 lg:hidden', mobileOpen ? 'visible' : 'invisible pointer-events-none')}><div className={cn('absolute inset-0 bg-black/65 backdrop-blur-sm transition-opacity duration-300', mobileOpen ? 'opacity-100' : 'opacity-0')} onClick={() => setMobileOpen(false)} /><aside className={cn('absolute left-0 top-0 h-full w-[260px] bg-sidebar shadow-2xl transition-transform duration-300 ease-out', mobileOpen ? 'translate-x-0' : '-translate-x-full')}>{renderSidebar(false, () => setMobileOpen(false))}</aside></div>
+    <div className="flex min-w-0 flex-1 flex-col"><header className="sticky top-0 z-30 flex h-[72px] items-center justify-between border-b bg-background/90 px-4 backdrop-blur-xl sm:px-6"><div className="flex min-w-0 items-center gap-3"><Button variant="ghost" size="icon" className="lg:hidden" onClick={() => setMobileOpen(true)}><Menu className="h-5 w-5" /></Button><Button variant="ghost" size="icon" className="hidden lg:inline-flex" onClick={toggleCollapsed}><ChevronLeft className={cn('h-5 w-5 transition-transform duration-300', collapsed && 'rotate-180')} /></Button><div className="min-w-0"><p className="truncate text-sm font-semibold sm:text-base">{currentItem ? t(currentItem.labelKey) : t('nav.home')}</p><p className="hidden text-xs text-muted-foreground sm:block">{primaryRole}</p></div><div className="ml-5 hidden items-center gap-1 border-l pl-5 xl:flex"><Link to="/" className={cn('rounded-lg px-3 py-2 text-xs font-medium transition-colors', location.pathname === '/' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}>{t('nav.home')}</Link>{hasPermission('dashboard.view') && <Link to="/dashboard" className={cn('rounded-lg px-3 py-2 text-xs font-medium transition-colors', location.pathname === '/dashboard' ? 'bg-primary/10 text-primary' : 'text-muted-foreground hover:bg-muted hover:text-foreground')}>{t('nav.dashboard')}</Link>}</div></div>
+      <div className="flex items-center gap-1"><Button variant="ghost" size="icon" className="relative"><Bell className="h-4 w-4" /><span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-primary" /></Button><LanguageToggle /><ThemeToggle /><Button variant="ghost" size="icon" onClick={() => setSettingsOpen(true)}><Settings className="h-4 w-4" /></Button><DropdownMenu><DropdownMenuTrigger asChild><button className="ml-1 flex h-9 w-9 items-center justify-center rounded-full bg-gradient-to-br from-primary to-cyan-400 text-xs font-bold text-white shadow-sm">{initials}</button></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-56"><DropdownMenuLabel><p>{user?.name ?? t('common.user')}</p><p className="mt-0.5 text-xs font-normal text-muted-foreground">{user?.email ?? primaryRole}</p></DropdownMenuLabel><DropdownMenuSeparator />{hasPermission('settings.organization.view') && <DropdownMenuItem onClick={() => navigate('/settings/organization')}><Building2 className="mr-2 h-4 w-4" />{t('nav.organization')}</DropdownMenuItem>}<DropdownMenuItem onClick={() => setSettingsOpen(true)}><Settings className="mr-2 h-4 w-4" />{t('common.appearance')}</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem onClick={() => logoutMutation.mutate()} className="text-destructive"><LogOut className="mr-2 h-4 w-4" />{t('common.logout')}</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div>
+    </header><main className="flex-1 p-4 sm:p-6 lg:p-8"><div className="mx-auto max-w-[1500px]"><Outlet /></div></main></div><ThemeSettingsDrawer open={settingsOpen} onClose={() => setSettingsOpen(false)} /></div></TooltipProvider>;
 }
